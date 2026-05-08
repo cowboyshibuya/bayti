@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
+import { ConvexAuthNextjsServerProvider } from "@convex-dev/auth/nextjs/server";
+import { ConvexClientProvider } from "@/components/providers/convex-provider";
+import { Toaster } from "@/components/ui/sonner";
+import { ThemeProvider } from "next-themes";
+import { SuppressNextThemesWarning } from "@/components/providers/suppress-warnings";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
 });
 
@@ -23,11 +23,27 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col">{children}</body>
-    </html>
+    <ConvexAuthNextjsServerProvider>
+      <html
+        lang="en"
+        suppressHydrationWarning
+        className={`${inter.variable} h-full antialiased`}
+      >
+        <body className="min-h-full bg-background text-foreground flex flex-col">
+          <ConvexClientProvider>
+            <SuppressNextThemesWarning />
+            <ThemeProvider
+              attribute={"class"}
+              defaultTheme="light"
+              enableSystem
+              disableTransitionOnChange
+            >
+              {children}
+            </ThemeProvider>
+            <Toaster richColors position="bottom-right"/>
+          </ConvexClientProvider>
+        </body>
+      </html>
+    </ConvexAuthNextjsServerProvider>
   );
 }
