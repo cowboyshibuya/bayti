@@ -9,6 +9,7 @@ import {
   ReceiptText,
   Settings,
   ShoppingCart,
+  Sparkles,
   WalletCards,
 } from "lucide-react";
 
@@ -97,6 +98,7 @@ export const DEFAULT_CURRENCY = "EUR";
 
 export const APP_NAVIGATION = [
   { label: "Dashboard", href: "/dashboard", icon: Home },
+  { label: "Stella", href: "/stella", icon: Sparkles },
   { label: "Inbox", href: "/inbox", icon: Inbox },
   { label: "Tasks", href: "/tasks", icon: CheckSquare },
   { label: "Bills", href: "/bills", icon: ReceiptText },

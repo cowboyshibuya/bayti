@@ -168,7 +168,7 @@ export default function DashboardPage() {
             </Button>
           </div>
           <motion.div
-            className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+            className="grid gap-3 grid-cols-2 sm:grid-cols-4"
             variants={container}
             initial="hidden"
             animate="visible"
@@ -208,7 +208,7 @@ export default function DashboardPage() {
           variants={item}
           className="overflow-hidden rounded-3xl border border-border bg-card shadow-[0_22px_70px_rgba(25,25,25,0.08)] dark:bg-card/86 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_24px_80px_rgba(0,0,0,0.24)]"
         >
-          <div className="grid gap-0 xl:grid-cols-[1.05fr_1fr]">
+          <div className="flex-1 sm:grid gap-0 xl:grid-cols-[1.05fr_1fr]">
             <div className="border-b border-border p-5 sm:p-6 xl:border-b-0 xl:border-r">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
@@ -262,8 +262,8 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div className="grid content-between gap-4 p-5 sm:p-6">
-              <div className="grid gap-3 sm:grid-cols-2">
+            <div className="flex-1 space-y-2 sm:grid overflow-hidden content-between gap-4 p-5 sm:p-6">
+              <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
                 <FinanceMetric
                   label="Already paid"
                   value={formatCurrency(financials.budget.paidBills)}

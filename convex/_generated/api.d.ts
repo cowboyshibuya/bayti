@@ -28,6 +28,7 @@ import type * as lib_validators from "../lib/validators.js";
 import type * as members from "../members.js";
 import type * as reminders from "../reminders.js";
 import type * as shopping from "../shopping.js";
+import type * as stella from "../stella.js";
 import type * as tasks from "../tasks.js";
 import type * as users from "../users.js";
 
@@ -58,6 +59,7 @@ declare const fullApi: ApiFromModules<{
   members: typeof members;
   reminders: typeof reminders;
   shopping: typeof shopping;
+  stella: typeof stella;
   tasks: typeof tasks;
   users: typeof users;
 }>;

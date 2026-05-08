@@ -339,6 +339,84 @@ export default defineSchema({
     .index("by_household", ["householdId"])
     .index("by_status_remind_at", ["status", "remindAt"]),
 
+  stellaSettings: defineTable({
+    householdId: v.id("households"),
+    modelId: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_household", ["householdId"]),
+
+  stellaConversations: defineTable({
+    householdId: v.id("households"),
+    scope: v.union(v.literal("private"), v.literal("shared")),
+    userId: v.optional(v.id("users")),
+    summary: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_household", ["householdId"])
+    .index("by_household_scope_user", ["householdId", "scope", "userId"]),
+
+  stellaMessages: defineTable({
+    householdId: v.id("households"),
+    conversationId: v.id("stellaConversations"),
+    authorUserId: v.optional(v.id("users")),
+    role: v.union(
+      v.literal("user"),
+      v.literal("assistant"),
+      v.literal("system"),
+    ),
+    content: v.string(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("complete"),
+      v.literal("error"),
+    ),
+    modelId: v.optional(v.string()),
+    usage: v.optional(
+      v.object({
+        promptTokens: v.optional(v.number()),
+        completionTokens: v.optional(v.number()),
+        totalTokens: v.optional(v.number()),
+      }),
+    ),
+    proposedAction: v.optional(
+      v.union(
+        v.object({
+          kind: v.literal("create_reminder"),
+          title: v.string(),
+          note: v.optional(v.string()),
+          remindAt: v.number(),
+          targetUserId: v.optional(v.id("users")),
+        }),
+        v.object({
+          kind: v.literal("create_event"),
+          title: v.string(),
+          description: v.optional(v.string()),
+          startsAt: v.number(),
+          endsAt: v.optional(v.number()),
+          isAllDay: v.boolean(),
+          location: v.optional(v.string()),
+          ownerUserId: v.optional(v.id("users")),
+        }),
+      ),
+    ),
+    actionStatus: v.optional(
+      v.union(
+        v.literal("proposed"),
+        v.literal("accepted"),
+        v.literal("rejected"),
+        v.literal("completed"),
+        v.literal("failed"),
+      ),
+    ),
+    actionResultId: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_conversation_created_at", ["conversationId", "createdAt"])
+    .index("by_household", ["householdId"]),
+
   activityEvents: defineTable({
     householdId: v.id("households"),
     actorUserId: v.optional(v.id("users")),

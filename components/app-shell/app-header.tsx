@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useQuery } from "convex/react";
-import { Menu } from "lucide-react";
+import { Menu, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 
 import { api } from "@/convex/_generated/api";
@@ -46,6 +46,18 @@ export function AppHeader() {
         <div className="hidden sm:block">
           <QuickCreateDialog />
         </div>
+        <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
+          <Button
+            asChild
+            variant="ghost"
+            className="h-10 gap-2 rounded-2xl px-3"
+          >
+            <Link href="/stella">
+              <Sparkles className="size-4" />
+              <span className="hidden md:inline">Stella</span>
+            </Link>
+          </Button>
+        </motion.div>
         <ThemeToggle />
         <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}>
           <Button
