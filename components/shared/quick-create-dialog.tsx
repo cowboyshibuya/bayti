@@ -21,8 +21,20 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { QUICK_CREATE_ITEMS } from "@/lib/constants";
+import {
+  ReminderForm,
+  type ReminderFormSubmitValues,
+} from "@/components/reminders/reminder-form";
 
-type CreateMode = "task" | "bill" | "event" | "shopping" | "expense" | null;
+type CreateMode =
+  | "task"
+  | "bill"
+  | "event"
+  | "shopping"
+  | "expense"
+  | "document"
+  | "reminder"
+  | null;
 
 export function QuickCreateDialog() {
   const [open, setOpen] = useState(false);
@@ -38,6 +50,7 @@ export function QuickCreateDialog() {
   const createEvent = useMutation(api.events.create);
   const createShoppingList = useMutation(api.shopping.createList);
   const createExpense = useMutation(api.expenses.create);
+  const createReminder = useMutation(api.reminders.create);
 
   async function handleCreateTask(values: TaskFormSubmitValues) {
     if (!householdId) return;
@@ -122,6 +135,19 @@ export function QuickCreateDialog() {
     setOpen(false);
   }
 
+  async function handleCreateReminder(values: ReminderFormSubmitValues) {
+    if (!householdId) return;
+    await createReminder({
+      householdId,
+      title: values.title,
+      note: values.note,
+      remindAt: values.remindAt,
+      targetUserId: values.targetUserId,
+    });
+    setMode(null);
+    setOpen(false);
+  }
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -141,7 +167,14 @@ export function QuickCreateDialog() {
         {mode === null && (
           <div className="grid gap-2 sm:grid-cols-2">
             {QUICK_CREATE_ITEMS.map((item) => {
-              const enabled = item.label === "Task" || item.label === "Bill" || item.label === "Event" || item.label === "Shopping" || item.label === "Expense";
+              const enabled =
+                item.label === "Task" ||
+                item.label === "Bill" ||
+                item.label === "Event" ||
+                item.label === "Shopping" ||
+                item.label === "Expense" ||
+                item.label === "Document" ||
+                item.label === "Reminder";
               return (
                 <button
                   key={item.label}
@@ -244,6 +277,23 @@ export function QuickCreateDialog() {
             />
           </div>
         )}
+
+        {mode === "reminder" && members && (
+          <div className="grid gap-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-medium">Create reminder</h3>
+              <Button variant="ghost" size="sm" onClick={() => setMode(null)}>
+                Back
+              </Button>
+            </div>
+            <ReminderForm
+              members={members}
+              submitLabel="Create reminder"
+              onSubmit={handleCreateReminder}
+            />
+          </div>
+        )}
+
       </DialogContent>
     </Dialog>
   );

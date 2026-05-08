@@ -44,6 +44,10 @@ export const ACTIVITY_ACTIONS = {
   shoppingListDeleted: "shopping_list.deleted",
   shoppingItemAdded: "shopping_item.added",
   shoppingItemToggled: "shopping_item.toggled",
+  reminderCreated: "reminder.created",
+  reminderUpdated: "reminder.updated",
+  reminderDismissed: "reminder.dismissed",
+  reminderCancelled: "reminder.cancelled",
 } as const;
 
 export const EXPENSE_CATEGORIES = [
@@ -71,6 +75,7 @@ export const ENTITY_TYPES = {
   expense: "expense",
   document: "document",
   event: "event",
+  reminder: "reminder",
   shoppingList: "shopping_list",
 } as const;
 

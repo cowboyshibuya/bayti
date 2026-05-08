@@ -70,6 +70,21 @@ export const shoppingListStatusValidator = v.union(
   v.literal("archived"),
 );
 
+export const reminderEntityTypeValidator = v.union(
+  v.literal("task"),
+  v.literal("bill"),
+  v.literal("event"),
+  v.literal("document"),
+  v.literal("manual"),
+);
+
+export const reminderStatusValidator = v.union(
+  v.literal("scheduled"),
+  v.literal("sent"),
+  v.literal("dismissed"),
+  v.literal("cancelled"),
+);
+
 export const expenseCategoryValidator = v.union(
   v.literal("Groceries"),
   v.literal("Utilities"),

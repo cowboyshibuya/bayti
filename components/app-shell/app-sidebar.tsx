@@ -4,13 +4,20 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { Home } from "lucide-react";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { useHousehold } from "@/lib/household-context";
 
 import { APP_NAVIGATION } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
-import { ThemeToggle } from "@/components/app-shell/theme-toggle";
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const { household } = useHousehold();
+  const inboxCount = useQuery(
+    api.inbox.count,
+    household?._id ? { householdId: household._id } : "skip",
+  );
 
   return (
     <div className="flex h-full min-h-svh flex-col p-3">
@@ -46,6 +53,11 @@ export function AppSidebar() {
               )}
               <item.icon className="relative z-10 size-4" />
               <span className="relative z-10">{item.label}</span>
+              {item.href === "/inbox" && inboxCount !== undefined && inboxCount > 0 && (
+                <span className="relative z-10 ml-auto rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-semibold text-accent-foreground">
+                  {Math.min(inboxCount, 99)}
+                </span>
+              )}
             </Link>
           );
         })}

@@ -22,6 +22,7 @@ import { formatCurrency } from "@/lib/formatters";
 import { useHousehold } from "@/lib/household-context";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/dates";
+import { NeedsAttentionPanel } from "@/components/dashboard/needs-attention-panel";
 
 type MonthlyPoint = {
   key: string;
@@ -312,6 +313,7 @@ export default function DashboardPage() {
         <section className="grid gap-6 xl:grid-cols-[1fr_360px]">
           <div className="grid gap-6 lg:grid-cols-2">
             <TodayPanel tasks={taskDashboard.todayTasks} />
+            <NeedsAttentionPanel householdId={householdId} />
             <DashboardMiniCalendar householdId={householdId} />
             <UpcomingBillsPanel bills={dashboard.upcomingBills} />
             <UpcomingPanel tasks={taskDashboard.upcomingTasks} />
