@@ -635,6 +635,52 @@ export const sendMessage = action({
   },
 });
 
+export const clearPrivateConversation = mutation({
+  args: {
+    householdId: v.id("households"),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireCurrentUser(ctx);
+    await requireHouseholdMember(ctx, args.householdId, user._id);
+
+    const conversation = await ctx.db
+      .query("stellaConversations")
+      .withIndex("by_household_scope_user", (q) =>
+        q
+          .eq("householdId", args.householdId)
+          .eq("scope", "private")
+          .eq("userId", user._id),
+      )
+      .unique();
+
+    if (!conversation) {
+      return { deletedCount: 0, hasMore: false };
+    }
+
+    const batchSize = 100;
+    const messages = await ctx.db
+      .query("stellaMessages")
+      .withIndex("by_conversation_created_at", (q) =>
+        q.eq("conversationId", conversation._id),
+      )
+      .take(batchSize);
+
+    for (const message of messages) {
+      await ctx.db.delete(message._id);
+    }
+
+    await ctx.db.patch(conversation._id, {
+      summary: undefined,
+      updatedAt: Date.now(),
+    });
+
+    return {
+      deletedCount: messages.length,
+      hasMore: messages.length === batchSize,
+    };
+  },
+});
+
 export const rejectAction = mutation({
   args: {
     householdId: v.id("households"),

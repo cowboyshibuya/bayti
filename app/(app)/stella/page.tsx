@@ -10,6 +10,7 @@ import {
   Loader2,
   Send,
   Sparkles,
+  Trash2,
   UserRound,
   UsersRound,
   X,
@@ -18,6 +19,14 @@ import {
 import { api } from "@/convex/_generated/api";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { LoadingState } from "@/components/shared/loading-state";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { useHousehold } from "@/lib/household-context";
@@ -43,12 +52,15 @@ export default function StellaPage() {
   const sendMessage = useAction(api.stella.sendMessage);
   const confirmAction = useMutation(api.stella.confirmAction);
   const rejectAction = useMutation(api.stella.rejectAction);
+  const clearPrivateConversation = useMutation(api.stella.clearPrivateConversation);
   const messages = useQuery(
     api.stella.listMessages,
     householdId ? { householdId, conversationId, limit: 100 } : "skip",
   );
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
+  const [clearDialogOpen, setClearDialogOpen] = useState(false);
+  const [clearing, setClearing] = useState(false);
   const [actionPendingId, setActionPendingId] =
     useState<Id<"stellaMessages"> | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -134,6 +146,31 @@ export default function StellaPage() {
     }
   }
 
+  async function handleClearPrivateConversation() {
+    if (!householdId || pending || clearing) return;
+    setClearing(true);
+    setError(null);
+
+    try {
+      let hasMore = true;
+
+      while (hasMore) {
+        const result = await clearPrivateConversation({ householdId });
+        hasMore = result.hasMore;
+      }
+
+      setClearDialogOpen(false);
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "Could not clear your private Stella chat.",
+      );
+    } finally {
+      setClearing(false);
+    }
+  }
+
   if (!householdId || messages === undefined) {
     return <LoadingState label="Opening Stella" />;
   }
@@ -195,13 +232,28 @@ export default function StellaPage() {
                 </p>
               </div>
             </div>
-            {currentUser && (
-              <UserAvatar
-                name={currentUser.name ?? currentUser.email ?? "Family member"}
-                imageUrl={currentUser.image}
-                className="size-8"
-              />
-            )}
+            <div className="flex items-center gap-2">
+              {scope === "private" && visibleMessages.length > 0 && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setClearDialogOpen(true)}
+                  disabled={pending || clearing}
+                  className="h-9 rounded-2xl px-3 text-black/50 hover:bg-red-50 hover:text-red-700 disabled:opacity-40 dark:text-foreground/50 dark:hover:bg-destructive/10 dark:hover:text-destructive"
+                >
+                  <Trash2 className="size-4" />
+                  <span className="hidden sm:inline">Clear</span>
+                </Button>
+              )}
+              {currentUser && (
+                <UserAvatar
+                  name={currentUser.name ?? currentUser.email ?? "Family member"}
+                  imageUrl={currentUser.image}
+                  className="size-8"
+                />
+              )}
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-6">
@@ -220,7 +272,6 @@ export default function StellaPage() {
                     />
                   ))}
                 </AnimatePresence>
-                {pending && <TypingBubble />}
               </div>
             )}
             <div ref={messagesEndRef} />
@@ -270,6 +321,42 @@ export default function StellaPage() {
           </form>
         </motion.section>
       </div>
+
+      <Dialog open={clearDialogOpen} onOpenChange={setClearDialogOpen}>
+        <DialogContent className="rounded-[1.75rem] border-black/[0.08] bg-[#fbfaf8] sm:max-w-md dark:border-white/[0.09] dark:bg-card">
+          <DialogHeader>
+            <DialogTitle>Clear private Stella chat?</DialogTitle>
+            <DialogDescription>
+              This permanently deletes your private Stella messages for this household.
+              Shared chat and any reminders or events Stella created will stay intact.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setClearDialogOpen(false)}
+              disabled={clearing}
+              className="rounded-2xl"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleClearPrivateConversation}
+              disabled={clearing || pending}
+              className="rounded-2xl bg-red-700 text-white hover:bg-red-800 dark:bg-destructive dark:text-destructive-foreground dark:hover:bg-destructive/90"
+            >
+              {clearing ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Trash2 className="size-4" />
+              )}
+              Clear private chat
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }
@@ -571,20 +658,5 @@ function ActionCard({
         </p>
       )}
     </div>
-  );
-}
-
-function TypingBubble() {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="flex justify-start"
-    >
-      <div className="inline-flex items-center gap-2 rounded-[1.35rem] border border-black/[0.07] bg-[#fbfaf8] px-4 py-3 text-sm font-medium text-black/58 dark:border-white/[0.08] dark:bg-background dark:text-foreground/58">
-        <Loader2 className="size-4 animate-spin" />
-        Stella is thinking
-      </div>
-    </motion.div>
   );
 }
