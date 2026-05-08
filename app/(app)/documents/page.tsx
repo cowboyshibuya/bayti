@@ -1,15 +1,12 @@
-import { FileText } from "lucide-react";
+import { Suspense } from "react";
 
-import { EmptyState } from "@/components/shared/empty-state";
+import { LoadingState } from "@/components/shared/loading-state";
+import { DocumentsClient } from "@/components/documents/document-client";
 
 export default function DocumentsPage() {
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6">
-      <EmptyState
-        icon={FileText}
-        title="No documents yet"
-        description="Document metadata and uploads start in the Documents milestone."
-      />
-    </div>
+    <Suspense fallback={<LoadingState label="Loading documents" />}>
+      <DocumentsClient />
+    </Suspense>
   );
 }

@@ -50,17 +50,6 @@ export function AppSidebar() {
           );
         })}
       </nav>
-
-      <div className="mt-auto rounded-3xl border border-border bg-card/70 p-4 shadow-[0_18px_50px_rgba(25,25,25,0.06)] backdrop-blur-xl dark:bg-white/[0.045] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <p className="text-sm font-semibold text-foreground/88">Family space</p>
-          <ThemeToggle />
-        </div>
-        <p className="mt-1 text-xs leading-5 text-foreground/42">
-          Private household activity, planning, and shared routines in one calm
-          place.
-        </p>
-      </div>
     </div>
   );
 }

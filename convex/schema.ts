@@ -252,8 +252,20 @@ export default defineSchema({
       filterFields: ["householdId"],
     }),
 
+  documentFolders: defineTable({
+    householdId: v.id("households"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    createdByUserId: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_household", ["householdId"])
+    .index("by_household_name", ["householdId", "name"]),
+
   documents: defineTable({
     householdId: v.id("households"),
+    folderId: v.optional(v.id("documentFolders")),
     title: v.string(),
     documentType: v.union(
       v.literal("receipt"),
@@ -279,7 +291,8 @@ export default defineSchema({
   })
     .index("by_household", ["householdId"])
     .index("by_household_type", ["householdId", "documentType"])
-    .index("by_household_expires", ["householdId", "expiresAt"]),
+    .index("by_household_expires", ["householdId", "expiresAt"])
+    .index("by_household_folder", ["householdId", "folderId"]),
 
   documentLinks: defineTable({
     householdId: v.id("households"),

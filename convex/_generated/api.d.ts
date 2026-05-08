@@ -13,6 +13,8 @@ import type * as activity from "../activity.js";
 import type * as auth from "../auth.js";
 import type * as bills from "../bills.js";
 import type * as calendar from "../calendar.js";
+import type * as documentFolders from "../documentFolders.js";
+import type * as documents from "../documents.js";
 import type * as events from "../events.js";
 import type * as expenses from "../expenses.js";
 import type * as households from "../households.js";
@@ -38,6 +40,8 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   bills: typeof bills;
   calendar: typeof calendar;
+  documentFolders: typeof documentFolders;
+  documents: typeof documents;
   events: typeof events;
   expenses: typeof expenses;
   households: typeof households;

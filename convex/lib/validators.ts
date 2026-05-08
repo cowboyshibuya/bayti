@@ -86,3 +86,13 @@ export const expenseCategoryValidator = v.union(
   v.literal("Gifts"),
   v.literal("Miscellaneous"),
 );
+
+export const documentTypeValidator = v.union(
+  v.literal("receipt"),
+  v.literal("invoice"),
+  v.literal("contract"),
+  v.literal("warranty"),
+  v.literal("policy"),
+  v.literal("identity"),
+  v.literal("other"),
+);
