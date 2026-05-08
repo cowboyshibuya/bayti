@@ -12,9 +12,9 @@ export type MemberWithUser = {
 
 export function getMemberName(member: MemberWithUser | null | undefined) {
   return (
-    member?.membership.displayName ??
     member?.user?.name ??
     member?.user?.email ??
+    member?.membership.displayName ??
     "Family member"
   );
 }

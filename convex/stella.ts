@@ -494,9 +494,9 @@ export const prepareTurn = internalQuery({
         members: members.map((member) => ({
           id: member.id,
           name:
-            member.displayName ??
             member.user?.name ??
             member.user?.email ??
+            member.displayName ??
             "Family member",
           role: member.role,
         })),
