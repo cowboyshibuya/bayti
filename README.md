@@ -1,4 +1,6 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Shelby
+
+This is a [Next.js](https://nextjs.org) App Router project backed by Convex.
 
 ## Getting Started
 
@@ -29,8 +31,40 @@ To learn more about Next.js, take a look at the following resources:
 
 You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
-## Deploy on Vercel
+## Cloudflare Workers preview with vinext
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+This project keeps the standard Next.js scripts and adds a parallel
+Cloudflare Workers path powered by [vinext](https://vinext.io/).
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+bun install
+bun run check:cf
+bun run build:cf
+bun run deploy:cf
+```
+
+The Cloudflare scripts are:
+
+- `bun run dev:cf` - run the vinext development server.
+- `bun run build:cf` - build the app with vinext.
+- `bun run preview:cf` - run the vinext production server locally.
+- `bun run deploy:cf` - deploy a preview Worker with `vinext deploy --preview`.
+- `bun run check:cf` - scan for vinext compatibility issues.
+
+Required frontend environment variables:
+
+```bash
+NEXT_PUBLIC_CONVEX_URL=https://<deployment>.convex.cloud
+NEXT_PUBLIC_CONVEX_SITE_URL=https://<deployment>.convex.site
+```
+
+Stella's `OPENROUTER_API_KEY` is read by Convex actions. Keep it configured in
+the Convex deployment environment, not as a Cloudflare Worker secret.
+
+Before testing auth on a Cloudflare preview or production URL, update the Convex
+auth site URL for that environment so cookies and redirects match the Worker
+origin. For the current Convex setup, this means setting the Convex `SITE_URL`
+environment variable to the Cloudflare URL and redeploying Convex functions.
+
+Use `wrangler login` for local deploys, or set `CLOUDFLARE_API_TOKEN` and
+`CLOUDFLARE_ACCOUNT_ID` in your shell for non-interactive deploys.
