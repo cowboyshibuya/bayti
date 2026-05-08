@@ -4,7 +4,8 @@ import Link from "next/link";
 import { ShoppingCart, Trash2 } from "lucide-react";
 import { motion } from "framer-motion";
 
-import type { Doc } from "../../../convex/_generated/dataModel";
+
+import type { Doc } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";

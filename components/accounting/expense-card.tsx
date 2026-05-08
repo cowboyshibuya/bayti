@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { WalletCards, CalendarDays, Tag } from "lucide-react";
 
-import type { Doc } from "../../../convex/_generated/dataModel";
+import { Doc } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/formatters";
 import { formatDate } from "@/lib/dates";

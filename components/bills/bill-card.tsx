@@ -4,7 +4,7 @@ import Link from "next/link";
 import { CalendarClock, CreditCard, ReceiptText, Repeat } from "lucide-react";
 import { motion } from "framer-motion";
 
-import type { Doc } from "../../../convex/_generated/dataModel";
+import type { Doc } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import type { MemberWithUser } from "@/components/shared/member-display";
 import { MemberDisplay } from "@/components/shared/member-display";

@@ -4,7 +4,8 @@ import Link from "next/link";
 import { CalendarDays, MapPin } from "lucide-react";
 import { motion } from "framer-motion";
 
-import type { Doc } from "../../../convex/_generated/dataModel";
+
+import type { Doc } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { formatDate } from "@/lib/dates";
 import { EventStatusBadge } from "./event-status-badge";

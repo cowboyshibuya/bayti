@@ -1,6 +1,6 @@
 import { ShoppingCart } from "lucide-react";
 
-import type { Doc } from "../../../convex/_generated/dataModel";
+import type { Doc } from "@/convex/_generated/dataModel";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ShoppingListCard } from "@/components/shopping/shopping-cards";
 import { PanelShell } from "./panel-shell";

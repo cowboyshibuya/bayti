@@ -3,7 +3,8 @@
 import { motion } from "framer-motion";
 import { CheckSquare } from "lucide-react";
 
-import type { Doc } from "../../../convex/_generated/dataModel";
+
+import type { Doc } from "@/convex/_generated/dataModel";
 import { EmptyState } from "@/components/shared/empty-state";
 import { TaskCard } from "./task-card";
 

@@ -1,6 +1,7 @@
 import { ReceiptText } from "lucide-react";
 
-import type { Doc } from "../../../convex/_generated/dataModel";
+
+import type { Doc } from "@/convex/_generated/dataModel";
 import { EmptyState } from "@/components/shared/empty-state";
 import { BillCard } from "@/components/bills/bill-card";
 import { PanelShell } from "./panel-shell";

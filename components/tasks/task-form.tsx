@@ -3,7 +3,8 @@
 import { FormEvent, useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
 
-import type { Doc, Id } from "../../../convex/_generated/dataModel";
+
+import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";

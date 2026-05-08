@@ -2,7 +2,8 @@
 
 import { motion } from "framer-motion";
 
-import type { Doc } from "../../../convex/_generated/dataModel";
+
+import type { Doc } from "@/convex/_generated/dataModel";
 import { formatDateTime } from "@/lib/dates";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { PanelShell } from "./panel-shell";
@@ -56,7 +57,7 @@ export function RecentActivityPanel({
             >
               <UserAvatar
                 name={event.actor?.name ?? "Family member"}
-                imageUrl={event.actor?.imageUrl}
+                imageUrl={event.actor?.image}
                 className="mt-0.5 size-7"
               />
               <div>

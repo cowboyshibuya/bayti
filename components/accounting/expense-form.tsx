@@ -3,7 +3,7 @@
 import { FormEvent, useState } from "react";
 import { Loader2 } from "lucide-react";
 
-import type { Doc, Id } from "../../../convex/_generated/dataModel";
+import { Doc, Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

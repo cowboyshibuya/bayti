@@ -1,6 +1,7 @@
 "use client";
 
-import type { Doc } from "../../../convex/_generated/dataModel";
+
+import type { Doc } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
 import { UserAvatar } from "./user-avatar";
 
@@ -38,7 +39,7 @@ export function MemberDisplay({
     <span className={cn("flex min-w-0 items-center gap-2", className)}>
       <UserAvatar
         name={name}
-        imageUrl={member?.user?.imageUrl}
+        imageUrl={member?.user?.image}
         className={cn("size-7", avatarClassName)}
       />
       <span className="min-w-0">

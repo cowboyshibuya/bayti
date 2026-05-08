@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { ReceiptText } from "lucide-react";
 
-import type { Doc } from "../../../convex/_generated/dataModel";
+import type { Doc } from "@/convex/_generated/dataModel";
 import { EmptyState } from "@/components/shared/empty-state";
 import type { MemberWithUser } from "@/components/shared/member-display";
 import { findMemberByUserId } from "@/components/shared/member-display";

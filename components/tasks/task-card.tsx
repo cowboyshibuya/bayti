@@ -4,7 +4,8 @@ import Link from "next/link";
 import { CalendarClock, CheckCircle2, Circle } from "lucide-react";
 import { motion } from "framer-motion";
 
-import type { Doc } from "../../../convex/_generated/dataModel";
+
+import type { Doc } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { formatDate, isOverdue } from "@/lib/dates";
 import { toTitleLabel } from "@/lib/formatters";

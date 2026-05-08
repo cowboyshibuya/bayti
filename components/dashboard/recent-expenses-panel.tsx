@@ -3,7 +3,7 @@
 import { useQuery } from "convex/react";
 import { WalletCards } from "lucide-react";
 
-import { api } from "../../../convex/_generated/api";
+import { api } from "@/convex/_generated/api";
 import { EmptyState } from "@/components/shared/empty-state";
 import { formatCurrency } from "@/lib/formatters";
 import { formatDate } from "@/lib/dates";
