@@ -3,11 +3,14 @@ import { v } from "convex/values";
 import { query, type QueryCtx } from "./_generated/server";
 import { requireHouseholdMember } from "./lib/permissions";
 import type { Doc } from "./_generated/dataModel";
+import { enrichUser } from "./lib/users";
 
 async function withActor(ctx: QueryCtx, event: Doc<"activityEvents">) {
   return {
     ...event,
-    actor: event.actorUserId ? await ctx.db.get(event.actorUserId) : null,
+    actor: event.actorUserId
+      ? await enrichUser(ctx, await ctx.db.get(event.actorUserId))
+      : null,
   };
 }
 

@@ -11,6 +11,7 @@ import {
   requireHouseholdRole,
 } from "./lib/permissions";
 import { documentTypeValidator } from "./lib/validators";
+import { enrichUser } from "./lib/users";
 
 type DocumentPatch = Partial<Doc<"documents">>;
 
@@ -67,7 +68,7 @@ async function ensureFolderInHousehold(
 async function enrichDocument(ctx: QueryCtx, document: Doc<"documents">) {
   const [folder, uploadedBy, fileUrl] = await Promise.all([
     document.folderId ? ctx.db.get(document.folderId) : null,
-    ctx.db.get(document.uploadedByUserId),
+    ctx.db.get(document.uploadedByUserId).then((user) => enrichUser(ctx, user)),
     document.storageId ? ctx.storage.getUrl(document.storageId) : null,
   ]);
 

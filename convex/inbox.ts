@@ -4,6 +4,7 @@ import type { Doc, Id } from "./_generated/dataModel";
 import type { QueryCtx } from "./_generated/server";
 import { query } from "./_generated/server";
 import { requireCurrentUser, requireHouseholdMember } from "./lib/permissions";
+import { enrichUser } from "./lib/users";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -81,7 +82,7 @@ function matchesView(item: InboxItem, view: InboxView, currentUserId: Id<"users"
 }
 
 async function getUser(ctx: QueryCtx, userId?: Id<"users"> | null) {
-  return userId ? await ctx.db.get(userId) : null;
+  return userId ? await enrichUser(ctx, await ctx.db.get(userId)) : null;
 }
 
 async function withUser(ctx: QueryCtx, item: Omit<InboxItem, "user">) {

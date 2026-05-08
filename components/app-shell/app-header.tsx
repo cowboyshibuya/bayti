@@ -1,12 +1,16 @@
 "use client";
 
+import Link from "next/link";
+import { useQuery } from "convex/react";
 import { Menu } from "lucide-react";
 import { motion } from "framer-motion";
 
+import { api } from "@/convex/_generated/api";
 import { AppSidebar } from "@/components/app-shell/app-sidebar";
 import { HouseholdSwitcher } from "@/components/app-shell/household-switcher";
 import { ThemeToggle } from "@/components/app-shell/theme-toggle";
 import { QuickCreateDialog } from "@/components/shared/quick-create-dialog";
+import { UserAvatar } from "@/components/shared/user-avatar";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -17,6 +21,9 @@ import {
 } from "@/components/ui/sheet";
 
 export function AppHeader() {
+  const profile = useQuery(api.users.getCurrentProfile, {});
+  const user = profile?.user;
+
   return (
     <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-border bg-background/82 px-4 backdrop-blur-2xl sm:px-6">
       <div className="flex items-center gap-3">
@@ -40,9 +47,23 @@ export function AppHeader() {
           <QuickCreateDialog />
         </div>
         <ThemeToggle />
-        {/*<motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-          <UserButton />
-        </motion.div>*/}
+        <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}>
+          <Button
+            asChild
+            variant="ghost"
+            className="h-10 rounded-2xl px-2"
+            aria-label="Open profile"
+          >
+            <Link href="/profile">
+              <UserAvatar
+                name={user?.name ?? user?.email ?? "Family member"}
+                imageUrl={profile?.profileImageUrl}
+                className="size-8"
+              />
+              <span className="sr-only">Profile</span>
+            </Link>
+          </Button>
+        </motion.div>
       </div>
     </header>
   );

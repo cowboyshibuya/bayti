@@ -17,6 +17,7 @@ import {
   requireIdentity,
 } from "./lib/permissions";
 import { householdNameValidator, inviteCodeValidator } from "./lib/validators";
+import { enrichUser } from "./lib/users";
 
 function normalizeInviteCode(inviteCode: string) {
   return inviteCode.trim().toUpperCase().replaceAll("-", "");
@@ -90,7 +91,7 @@ export const getOnboardingState = query({
     if (memberships.length === 0) {
       return {
         needsUserSync: false,
-        user,
+        user: await enrichUser(ctx, user),
         household: null,
         membership: null,
         households: [],
@@ -122,7 +123,7 @@ export const getOnboardingState = query({
 
     return {
       needsUserSync: false,
-      user,
+      user: await enrichUser(ctx, user),
       household: activeHousehold.household,
       membership: activeHousehold.membership,
       households,
@@ -252,7 +253,9 @@ export const getDashboard = query({
     const recentActivityWithActors = await Promise.all(
       recentActivity.map(async (event) => ({
         ...event,
-        actor: event.actorUserId ? await ctx.db.get(event.actorUserId) : null,
+        actor: event.actorUserId
+          ? await enrichUser(ctx, await ctx.db.get(event.actorUserId))
+          : null,
       })),
     );
 
@@ -285,7 +288,7 @@ export const getDashboard = query({
       .take(5);
 
     return {
-      user,
+      user: await enrichUser(ctx, user),
       household,
       membership: {
         ...membership,

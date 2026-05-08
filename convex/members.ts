@@ -10,6 +10,7 @@ import {
   requireHouseholdRole,
 } from "./lib/permissions";
 import { householdRoleValidator } from "./lib/validators";
+import { enrichUser } from "./lib/users";
 
 export const list = query({
   args: {
@@ -30,7 +31,7 @@ export const list = query({
           ...membership,
           role: normalizeHouseholdRole(membership.role),
         },
-        user: await ctx.db.get(membership.userId),
+        user: await enrichUser(ctx, await ctx.db.get(membership.userId)),
       })),
     );
   },
@@ -54,7 +55,7 @@ export const listAssignable = query({
           ...membership,
           role: normalizeHouseholdRole(membership.role),
         },
-        user: await ctx.db.get(membership.userId),
+        user: await enrichUser(ctx, await ctx.db.get(membership.userId)),
       })),
     );
   },
