@@ -14,6 +14,7 @@ import { UserAvatar } from "@/components/shared/user-avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useHousehold } from "@/lib/household-context";
 import { cn } from "@/lib/utils";
 
 const MAX_PROFILE_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
@@ -38,6 +39,7 @@ export default function ProfileSetupPage() {
 
 function ProfileSetupEditor({ profile }: { profile: ProfileData }) {
   const router = useRouter();
+  const { householdOptions } = useHousehold();
   const generateUploadUrl = useMutation(api.users.generateProfileImageUploadUrl);
   const updateProfile = useMutation(api.users.updateProfile);
   const removeProfileImage = useMutation(api.users.removeProfileImage);
@@ -149,7 +151,7 @@ function ProfileSetupEditor({ profile }: { profile: ProfileData }) {
       });
 
       clearSelectedFile();
-      router.replace("/onboarding");
+      router.replace(householdOptions.length > 0 ? "/households" : "/onboarding");
       router.refresh();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not save profile.");

@@ -27,7 +27,16 @@ export default function OnboardingPage() {
   const createHousehold = useMutation(api.households.createHousehold);
   const joinHousehold = useMutation(api.households.joinHousehold);
   const { setActiveHouseholdId } = useHousehold();
-  const [mode, setMode] = useState<OnboardingMode>("choice");
+  const [mode, setMode] = useState<OnboardingMode>(() => {
+    if (typeof window === "undefined") {
+      return "choice";
+    }
+
+    const initialMode = new URLSearchParams(window.location.search).get("mode");
+    return initialMode === "create" || initialMode === "join"
+      ? initialMode
+      : "choice";
+  });
   const [workspaceName, setWorkspaceName] = useState("");
   const [inviteCode, setInviteCode] = useState("");
   const [pending, setPending] = useState<"create" | "join" | null>(null);

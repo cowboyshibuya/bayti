@@ -48,7 +48,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
         password,
         ...(mode === "signUp" ? { name } : {}),
       });
-      router.push(mode === "signUp" ? "/profile/setup" : "/");
+      router.push(mode === "signUp" ? "/profile/setup" : "/households");
       router.refresh();
     } catch (error) {
       toast.error(

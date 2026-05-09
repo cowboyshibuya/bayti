@@ -19,6 +19,11 @@ const pageVariants = {
   exit: { opacity: 0, y: -6 },
 };
 
+function hasUsableDisplayName(name: string | undefined) {
+  const length = name?.trim().length ?? 0;
+  return length >= 2 && length <= 80;
+}
+
 export default function AppLayout({ children }: { children: ReactNode }) {
   const { isAuthenticated, isLoading } = useConvexAuth();
   const router = useRouter();
@@ -58,23 +63,53 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
       return;
     }
 
-    const hasHousehold = Boolean(onboardingState.household);
-    const needsProfileSetup =
-      !hasHousehold && !onboardingState.user?.profileSetupCompletedAt;
+    const hasSelectedHousehold = Boolean(
+      onboardingState.household && onboardingState.membership,
+    );
+    const hasHouseholds = onboardingState.households.length > 0;
+    const hasCompletedProfile = Boolean(
+      onboardingState.user?.profileSetupCompletedAt ||
+        (hasHouseholds && hasUsableDisplayName(onboardingState.user?.name)),
+    );
+    const needsProfileSetup = !hasCompletedProfile;
+    const onboardingMode =
+      typeof window === "undefined"
+        ? null
+        : new URLSearchParams(window.location.search).get("mode");
+    const isExplicitHouseholdOnboarding =
+      pathname === "/onboarding" &&
+      (onboardingMode === "create" || onboardingMode === "join");
 
     if (needsProfileSetup && pathname !== "/profile/setup") {
       router.replace("/profile/setup");
       return;
     }
 
-    if (!hasHousehold && !needsProfileSetup && pathname !== "/onboarding") {
+    if (
+      !needsProfileSetup &&
+      !hasHouseholds &&
+      pathname !== "/onboarding"
+    ) {
       router.replace("/onboarding");
       return;
     }
 
     if (
-      hasHousehold &&
-      (pathname === "/onboarding" || pathname === "/profile/setup")
+      !needsProfileSetup &&
+      hasHouseholds &&
+      !hasSelectedHousehold &&
+      pathname !== "/households" &&
+      !isExplicitHouseholdOnboarding
+    ) {
+      router.replace("/households");
+      return;
+    }
+
+    if (
+      hasSelectedHousehold &&
+      (pathname === "/onboarding" ||
+        pathname === "/profile/setup" ||
+        pathname === "/households")
     ) {
       router.replace("/dashboard");
     }

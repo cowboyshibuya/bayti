@@ -1,6 +1,8 @@
 import { v } from "convex/values";
+import { getAuthSessionId, getAuthUserId } from "@convex-dev/auth/server";
 
-import type { Doc } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
+import type { MutationCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
 import {
   assertImageStorageFile,
@@ -24,69 +26,204 @@ function cleanDisplayName(name: string) {
   return trimmed;
 }
 
+function hasUsableDisplayName(name: string | undefined) {
+  const length = name?.trim().length ?? 0;
+  return length >= 2 && length <= 80;
+}
+
+function cleanEmail(value: unknown) {
+  return String(value ?? "").trim().toLowerCase();
+}
+
+async function findPasswordAccountEmail(
+  ctx: MutationCtx,
+  userId: Id<"users">,
+) {
+  const account = await ctx.db
+    .query("authAccounts")
+    .withIndex("userIdAndProvider", (q) =>
+      q.eq("userId", userId).eq("provider", "password"),
+    )
+    .first();
+
+  return account ? cleanEmail(account.providerAccountId) : undefined;
+}
+
+async function hasHouseholdMembership(
+  ctx: MutationCtx,
+  userId: Id<"users">,
+) {
+  const membership = await ctx.db
+    .query("householdMembers")
+    .withIndex("by_user", (q) => q.eq("userId", userId))
+    .first();
+
+  return membership !== null;
+}
+
+async function findCanonicalUserByEmail(
+  ctx: MutationCtx,
+  email: string | undefined,
+  currentUserId: Id<"users">,
+) {
+  if (!email || !email.includes("@")) {
+    return await ctx.db.get(currentUserId);
+  }
+
+  const users = await ctx.db
+    .query("users")
+    .withIndex("email", (q) => q.eq("email", email))
+    .take(20);
+
+  let fallback: Doc<"users"> | null = null;
+
+  for (const user of users) {
+    const hasMembership = await hasHouseholdMembership(ctx, user._id);
+
+    if (hasMembership) {
+      return user;
+    }
+
+    if (
+      user.profileSetupCompletedAt !== undefined ||
+      hasUsableDisplayName(user.name)
+    ) {
+      fallback ??= user;
+    }
+
+    if (user._id === currentUserId) {
+      fallback ??= user;
+    }
+  }
+
+  return fallback ?? (await ctx.db.get(currentUserId));
+}
+
+async function relinkCurrentAuthRecords(
+  ctx: MutationCtx,
+  fromUserId: Id<"users">,
+  toUserId: Id<"users">,
+) {
+  if (fromUserId === toUserId) {
+    return;
+  }
+
+  const sessionId = (await getAuthSessionId(ctx)) as Id<"authSessions"> | null;
+
+  if (sessionId) {
+    const session = await ctx.db.get(sessionId);
+
+    if (session?.userId === fromUserId) {
+      await ctx.db.patch(sessionId, { userId: toUserId });
+    }
+  }
+
+  const accounts = await ctx.db
+    .query("authAccounts")
+    .withIndex("userIdAndProvider", (q) =>
+      q.eq("userId", fromUserId).eq("provider", "password"),
+    )
+    .take(10);
+
+  for (const account of accounts) {
+    await ctx.db.patch(account._id, { userId: toUserId });
+  }
+}
+
 export const syncCurrentUser = mutation({
   args: {},
   handler: async (ctx) => {
     const identity = await requireIdentity(ctx);
     const now = Date.now();
-    const tokenUser = await ctx.db
-      .query("users")
-      .withIndex("by_token_identifier", (q) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier),
-      )
-      .unique();
-    const emailMatches = identity.email
-      ? await ctx.db
-          .query("users")
-          .withIndex("email", (q) => q.eq("email", identity.email))
-          .take(2)
-      : [];
-    const existingUser =
-      tokenUser ??
-      emailMatches.find((user) => user.tokenIdentifier === undefined) ??
-      null;
-
+    const authUserId = (await getAuthUserId(ctx)) as Id<"users"> | null;
     const name =
       identity.name ??
       identity.email ??
       identity.preferredUsername ??
       "Family member";
 
-    if (existingUser) {
-      const patch: Partial<Doc<"users">> = {};
+    if (!authUserId) {
+      const tokenUser = await ctx.db
+        .query("users")
+        .withIndex("by_token_identifier", (q) =>
+          q.eq("tokenIdentifier", identity.tokenIdentifier),
+        )
+        .unique();
 
-      if (existingUser.email !== identity.email) {
-        patch.email = identity.email;
+      if (tokenUser) {
+        return tokenUser._id;
       }
 
-      if (existingUser.tokenIdentifier !== identity.tokenIdentifier) {
-        patch.tokenIdentifier = identity.tokenIdentifier;
-      }
-
-      if (!existingUser.name) {
-        patch.name = name;
-      }
-
-      if (!existingUser.image && identity.pictureUrl) {
-        patch.image = identity.pictureUrl;
-      }
-
-      if (Object.keys(patch).length > 0) {
-        patch.updatedAt = now;
-        await ctx.db.patch(existingUser._id, patch);
-      }
-
-      return existingUser._id;
+      throw new Error("Authenticated user record missing.");
     }
 
-    return await ctx.db.insert("users", {
-      name,
-      email: identity.email,
-      image: identity.pictureUrl,
-      tokenIdentifier: identity.tokenIdentifier,
-      createdAt: now,
-      updatedAt: now,
-    });
+    const authUser = await ctx.db.get(authUserId);
+
+    if (!authUser) {
+      throw new Error("Authenticated user record missing.");
+    }
+
+    const email =
+      cleanEmail(authUser.email) ||
+      cleanEmail(identity.email) ||
+      (await findPasswordAccountEmail(ctx, authUser._id));
+    const canonicalUser = await findCanonicalUserByEmail(
+      ctx,
+      email,
+      authUser._id,
+    );
+
+    if (!canonicalUser) {
+      throw new Error("Authenticated user record missing.");
+    }
+
+    if (canonicalUser._id !== authUser._id) {
+      const authUserHasMembership = await hasHouseholdMembership(
+        ctx,
+        authUser._id,
+      );
+      const canonicalHasMembership = await hasHouseholdMembership(
+        ctx,
+        canonicalUser._id,
+      );
+
+      if (!authUserHasMembership && canonicalHasMembership) {
+        await relinkCurrentAuthRecords(ctx, authUser._id, canonicalUser._id);
+      }
+    }
+
+    const patch: Partial<Doc<"users">> = {};
+
+    if (email && canonicalUser.email !== email) {
+      patch.email = email;
+    }
+
+    if (canonicalUser.tokenIdentifier !== identity.tokenIdentifier) {
+      patch.tokenIdentifier = identity.tokenIdentifier;
+    }
+
+    if (!canonicalUser.name) {
+      patch.name = name;
+    }
+
+    if (!canonicalUser.image && identity.pictureUrl) {
+      patch.image = identity.pictureUrl;
+    }
+
+    if (
+      !canonicalUser.profileSetupCompletedAt &&
+      hasUsableDisplayName(patch.name ?? canonicalUser.name) &&
+      (await hasHouseholdMembership(ctx, canonicalUser._id))
+    ) {
+      patch.profileSetupCompletedAt = now;
+    }
+
+    if (Object.keys(patch).length > 0) {
+      patch.updatedAt = now;
+      await ctx.db.patch(canonicalUser._id, patch);
+    }
+
+    return canonicalUser._id;
   },
 });
 

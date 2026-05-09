@@ -1,9 +1,11 @@
 import { v } from "convex/values";
 
+import type { Id, TableNames } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
 import {
   ACTIVITY_ACTIONS,
+  ADMIN_ROLES,
   ENTITY_TYPES,
   INVITE_CODE_ALPHABET,
   INVITE_CODE_LENGTH,
@@ -14,10 +16,13 @@ import {
   normalizeHouseholdRole,
   requireCurrentUser,
   requireHouseholdMember,
+  requireHouseholdRole,
   requireIdentity,
 } from "./lib/permissions";
 import { householdNameValidator, inviteCodeValidator } from "./lib/validators";
 import { enrichUser } from "./lib/users";
+
+const DELETE_BATCH_SIZE = 100;
 
 function normalizeInviteCode(inviteCode: string) {
   return inviteCode.trim().toUpperCase().replaceAll("-", "");
@@ -63,6 +68,297 @@ async function createUniqueInviteCode(ctx: MutationCtx) {
   }
 
   throw new Error("Could not generate a unique invite code.");
+}
+
+function assertConfirmationName(
+  household: { name: string },
+  confirmationName: string,
+) {
+  if (confirmationName.trim() !== household.name) {
+    throw new Error("Confirmation name does not match this household.");
+  }
+}
+
+async function deleteRows(
+  ctx: MutationCtx,
+  rows: readonly { _id: Id<TableNames> }[],
+) {
+  for (const row of rows) {
+    await ctx.db.delete(row._id);
+  }
+}
+
+async function deleteHouseholdAppData(
+  ctx: MutationCtx,
+  householdId: Id<"households">,
+) {
+  while (true) {
+    const messages = await ctx.db
+      .query("stellaMessages")
+      .withIndex("by_household", (q) => q.eq("householdId", householdId))
+      .take(DELETE_BATCH_SIZE);
+
+    if (messages.length === 0) {
+      break;
+    }
+
+    await deleteRows(ctx, messages);
+  }
+
+  while (true) {
+    const conversations = await ctx.db
+      .query("stellaConversations")
+      .withIndex("by_household", (q) => q.eq("householdId", householdId))
+      .take(DELETE_BATCH_SIZE);
+
+    if (conversations.length === 0) {
+      break;
+    }
+
+    await deleteRows(ctx, conversations);
+  }
+
+  while (true) {
+    const settings = await ctx.db
+      .query("stellaSettings")
+      .withIndex("by_household", (q) => q.eq("householdId", householdId))
+      .take(DELETE_BATCH_SIZE);
+
+    if (settings.length === 0) {
+      break;
+    }
+
+    await deleteRows(ctx, settings);
+  }
+
+  while (true) {
+    const taggings = await ctx.db
+      .query("taggings")
+      .withIndex("by_household", (q) => q.eq("householdId", householdId))
+      .take(DELETE_BATCH_SIZE);
+
+    if (taggings.length === 0) {
+      break;
+    }
+
+    await deleteRows(ctx, taggings);
+  }
+
+  while (true) {
+    const tags = await ctx.db
+      .query("tags")
+      .withIndex("by_household", (q) => q.eq("householdId", householdId))
+      .take(DELETE_BATCH_SIZE);
+
+    if (tags.length === 0) {
+      break;
+    }
+
+    await deleteRows(ctx, tags);
+  }
+
+  while (true) {
+    const documentLinks = await ctx.db
+      .query("documentLinks")
+      .withIndex("by_household", (q) => q.eq("householdId", householdId))
+      .take(DELETE_BATCH_SIZE);
+
+    if (documentLinks.length === 0) {
+      break;
+    }
+
+    await deleteRows(ctx, documentLinks);
+  }
+
+  while (true) {
+    const documents = await ctx.db
+      .query("documents")
+      .withIndex("by_household", (q) => q.eq("householdId", householdId))
+      .take(DELETE_BATCH_SIZE);
+
+    if (documents.length === 0) {
+      break;
+    }
+
+    for (const document of documents) {
+      if (document.storageId) {
+        await ctx.storage.delete(document.storageId);
+      }
+
+      await ctx.db.delete(document._id);
+    }
+  }
+
+  while (true) {
+    const folders = await ctx.db
+      .query("documentFolders")
+      .withIndex("by_household", (q) => q.eq("householdId", householdId))
+      .take(DELETE_BATCH_SIZE);
+
+    if (folders.length === 0) {
+      break;
+    }
+
+    await deleteRows(ctx, folders);
+  }
+
+  while (true) {
+    const lists = await ctx.db
+      .query("shoppingLists")
+      .withIndex("by_household", (q) => q.eq("householdId", householdId))
+      .take(DELETE_BATCH_SIZE);
+
+    if (lists.length === 0) {
+      break;
+    }
+
+    for (const list of lists) {
+      while (true) {
+        const items = await ctx.db
+          .query("shoppingItems")
+          .withIndex("by_shopping_list", (q) => q.eq("shoppingListId", list._id))
+          .take(DELETE_BATCH_SIZE);
+
+        if (items.length === 0) {
+          break;
+        }
+
+        await deleteRows(ctx, items);
+      }
+
+      await ctx.db.delete(list._id);
+    }
+  }
+
+  while (true) {
+    const expenses = await ctx.db
+      .query("expenses")
+      .withIndex("by_household", (q) => q.eq("householdId", householdId))
+      .take(DELETE_BATCH_SIZE);
+
+    if (expenses.length === 0) {
+      break;
+    }
+
+    for (const expense of expenses) {
+      while (true) {
+        const splits = await ctx.db
+          .query("expenseSplits")
+          .withIndex("by_expense", (q) => q.eq("expenseId", expense._id))
+          .take(DELETE_BATCH_SIZE);
+
+        if (splits.length === 0) {
+          break;
+        }
+
+        await deleteRows(ctx, splits);
+      }
+
+      await ctx.db.delete(expense._id);
+    }
+  }
+
+  while (true) {
+    const reminders = await ctx.db
+      .query("reminders")
+      .withIndex("by_household", (q) => q.eq("householdId", householdId))
+      .take(DELETE_BATCH_SIZE);
+
+    if (reminders.length === 0) {
+      break;
+    }
+
+    await deleteRows(ctx, reminders);
+  }
+
+  while (true) {
+    const tasks = await ctx.db
+      .query("tasks")
+      .withIndex("by_household", (q) => q.eq("householdId", householdId))
+      .take(DELETE_BATCH_SIZE);
+
+    if (tasks.length === 0) {
+      break;
+    }
+
+    await deleteRows(ctx, tasks);
+  }
+
+  while (true) {
+    const bills = await ctx.db
+      .query("bills")
+      .withIndex("by_household", (q) => q.eq("householdId", householdId))
+      .take(DELETE_BATCH_SIZE);
+
+    if (bills.length === 0) {
+      break;
+    }
+
+    await deleteRows(ctx, bills);
+  }
+
+  while (true) {
+    const events = await ctx.db
+      .query("events")
+      .withIndex("by_household", (q) => q.eq("householdId", householdId))
+      .take(DELETE_BATCH_SIZE);
+
+    if (events.length === 0) {
+      break;
+    }
+
+    await deleteRows(ctx, events);
+  }
+
+  while (true) {
+    const recurrenceRules = await ctx.db
+      .query("recurrenceRules")
+      .withIndex("by_household", (q) => q.eq("householdId", householdId))
+      .take(DELETE_BATCH_SIZE);
+
+    if (recurrenceRules.length === 0) {
+      break;
+    }
+
+    await deleteRows(ctx, recurrenceRules);
+  }
+
+  while (true) {
+    const notes = await ctx.db
+      .query("notes")
+      .withIndex("by_household", (q) => q.eq("householdId", householdId))
+      .take(DELETE_BATCH_SIZE);
+
+    if (notes.length === 0) {
+      break;
+    }
+
+    await deleteRows(ctx, notes);
+  }
+
+  while (true) {
+    const activityEvents = await ctx.db
+      .query("activityEvents")
+      .withIndex("by_household", (q) => q.eq("householdId", householdId))
+      .take(DELETE_BATCH_SIZE);
+
+    if (activityEvents.length === 0) {
+      break;
+    }
+
+    await deleteRows(ctx, activityEvents);
+  }
+}
+
+async function countAdmins(ctx: MutationCtx, householdId: Id<"households">) {
+  const memberships = await ctx.db
+    .query("householdMembers")
+    .withIndex("by_household", (q) => q.eq("householdId", householdId))
+    .collect();
+
+  return memberships.filter(
+    (membership) => normalizeHouseholdRole(membership.role) === "admin",
+  ).length;
 }
 
 export const getOnboardingState = query({
@@ -117,15 +413,17 @@ export const getOnboardingState = query({
     }
 
     const activeHousehold =
-      households.find(
-        ({ household }) => household._id === args.activeHouseholdId,
-      ) ?? households[0];
+      args.activeHouseholdId === null || args.activeHouseholdId === undefined
+        ? undefined
+        : households.find(
+            ({ household }) => household._id === args.activeHouseholdId,
+          );
 
     return {
       needsUserSync: false,
       user: await enrichUser(ctx, user),
-      household: activeHousehold.household,
-      membership: activeHousehold.membership,
+      household: activeHousehold?.household ?? null,
+      membership: activeHousehold?.membership ?? null,
       households,
     };
   },
@@ -221,6 +519,145 @@ export const joinHousehold = mutation({
       entityId: household._id,
       message: `${user.name ?? "A family member"} joined ${household.name}.`,
     });
+
+    return household._id;
+  },
+});
+
+export const updateHouseholdName = mutation({
+  args: {
+    householdId: v.id("households"),
+    name: householdNameValidator,
+  },
+  handler: async (ctx, args) => {
+    const user = await requireCurrentUser(ctx);
+    await requireHouseholdRole(ctx, args.householdId, ADMIN_ROLES);
+    const household = await ctx.db.get(args.householdId);
+
+    if (!household) {
+      throw new Error("Household not found.");
+    }
+
+    const name = cleanHouseholdName(args.name);
+
+    if (name === household.name) {
+      return household._id;
+    }
+
+    await ctx.db.patch(household._id, {
+      name,
+      updatedAt: Date.now(),
+    });
+
+    await writeActivityEvent(ctx, {
+      householdId: household._id,
+      actorUserId: user._id,
+      action: ACTIVITY_ACTIONS.householdUpdated,
+      entityType: ENTITY_TYPES.household,
+      entityId: household._id,
+      message: `${user.name ?? "A family member"} renamed ${household.name} to ${name}.`,
+    });
+
+    return household._id;
+  },
+});
+
+export const leaveHousehold = mutation({
+  args: {
+    householdId: v.id("households"),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireCurrentUser(ctx);
+    const membership = await requireHouseholdMember(
+      ctx,
+      args.householdId,
+      user._id,
+    );
+    const household = await ctx.db.get(args.householdId);
+
+    if (!household) {
+      throw new Error("Household not found.");
+    }
+
+    const adminCount = await countAdmins(ctx, args.householdId);
+
+    if (
+      normalizeHouseholdRole(membership.role) === "admin" &&
+      adminCount <= 1
+    ) {
+      throw new Error("The last household admin cannot leave.");
+    }
+
+    await ctx.db.delete(membership._id);
+
+    await writeActivityEvent(ctx, {
+      householdId: args.householdId,
+      actorUserId: user._id,
+      action: ACTIVITY_ACTIONS.memberUpdated,
+      entityType: ENTITY_TYPES.member,
+      entityId: membership._id,
+      message: `${user.name ?? "A family member"} left ${household.name}.`,
+    });
+
+    return args.householdId;
+  },
+});
+
+export const resetHouseholdData = mutation({
+  args: {
+    householdId: v.id("households"),
+    confirmationName: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await requireHouseholdRole(ctx, args.householdId, ADMIN_ROLES);
+    const household = await ctx.db.get(args.householdId);
+
+    if (!household) {
+      throw new Error("Household not found.");
+    }
+
+    assertConfirmationName(household, args.confirmationName);
+    await deleteHouseholdAppData(ctx, household._id);
+    await ctx.db.patch(household._id, {
+      updatedAt: Date.now(),
+    });
+
+    return household._id;
+  },
+});
+
+export const deleteHousehold = mutation({
+  args: {
+    householdId: v.id("households"),
+    confirmationName: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await requireHouseholdRole(ctx, args.householdId, ADMIN_ROLES);
+    const household = await ctx.db.get(args.householdId);
+
+    if (!household) {
+      throw new Error("Household not found.");
+    }
+
+    assertConfirmationName(household, args.confirmationName);
+    await deleteHouseholdAppData(ctx, household._id);
+
+    while (true) {
+      const memberships = await ctx.db
+        .query("householdMembers")
+        .withIndex("by_household", (q) =>
+          q.eq("householdId", args.householdId),
+        )
+        .take(DELETE_BATCH_SIZE);
+
+      if (memberships.length === 0) {
+        break;
+      }
+
+      await deleteRows(ctx, memberships);
+    }
+
+    await ctx.db.delete(household._id);
 
     return household._id;
   },

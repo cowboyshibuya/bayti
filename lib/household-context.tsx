@@ -5,7 +5,6 @@ import {
   ReactNode,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
   useSyncExternalStore,
 } from "react";
@@ -79,16 +78,6 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
     api.households.getOnboardingState,
     { activeHouseholdId },
   );
-
-  useEffect(() => {
-    const householdId = onboardingState?.household?._id ?? null;
-
-    if (!householdId || householdId === activeHouseholdId) {
-      return;
-    }
-
-    writeStoredHouseholdId(householdId);
-  }, [activeHouseholdId, onboardingState?.household?._id]);
 
   const setActiveHouseholdId = useCallback(
     (householdId: Id<"households"> | null) => {

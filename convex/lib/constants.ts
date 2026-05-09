@@ -12,6 +12,7 @@ export const INVITE_CODE_LENGTH = 8;
 export const ACTIVITY_ACTIONS = {
   householdCreated: "household.created",
   householdJoined: "household.joined",
+  householdUpdated: "household.updated",
   memberUpdated: "member.updated",
   taskCreated: "task.created",
   taskUpdated: "task.updated",

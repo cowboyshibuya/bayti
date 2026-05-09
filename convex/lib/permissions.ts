@@ -1,4 +1,5 @@
 import type { UserIdentity } from "convex/server";
+import { getAuthUserId } from "@convex-dev/auth/server";
 
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
@@ -28,10 +29,98 @@ export async function requireIdentity(
   return identity;
 }
 
+function cleanEmail(value: unknown) {
+  return String(value ?? "").trim().toLowerCase();
+}
+
+function hasUsableDisplayName(name: string | undefined) {
+  const length = name?.trim().length ?? 0;
+  return length >= 2 && length <= 80;
+}
+
+async function findPasswordAccountEmail(
+  ctx: QueryCtx | MutationCtx,
+  userId: Id<"users">,
+) {
+  const account = await ctx.db
+    .query("authAccounts")
+    .withIndex("userIdAndProvider", (q) =>
+      q.eq("userId", userId).eq("provider", "password"),
+    )
+    .first();
+
+  return account ? cleanEmail(account.providerAccountId) : undefined;
+}
+
+async function hasHouseholdMembership(
+  ctx: QueryCtx | MutationCtx,
+  userId: Id<"users">,
+) {
+  const membership = await ctx.db
+    .query("householdMembers")
+    .withIndex("by_user", (q) => q.eq("userId", userId))
+    .first();
+
+  return membership !== null;
+}
+
+async function findCanonicalUserByEmail(
+  ctx: QueryCtx | MutationCtx,
+  email: string | undefined,
+  currentUser: Doc<"users">,
+) {
+  if (!email || !email.includes("@")) {
+    return currentUser;
+  }
+
+  const users = await ctx.db
+    .query("users")
+    .withIndex("email", (q) => q.eq("email", email))
+    .take(20);
+
+  let fallback: Doc<"users"> | null = null;
+
+  for (const user of users) {
+    const hasMembership = await hasHouseholdMembership(ctx, user._id);
+
+    if (hasMembership) {
+      return user;
+    }
+
+    if (
+      user.profileSetupCompletedAt !== undefined ||
+      hasUsableDisplayName(user.name)
+    ) {
+      fallback ??= user;
+    }
+
+    if (user._id === currentUser._id) {
+      fallback ??= user;
+    }
+  }
+
+  return fallback ?? currentUser;
+}
+
 export async function getCurrentUser(
   ctx: QueryCtx | MutationCtx,
 ): Promise<Doc<"users"> | null> {
   const identity = await requireIdentity(ctx);
+  const authUserId = (await getAuthUserId(ctx)) as Id<"users"> | null;
+
+  if (authUserId) {
+    const authUser = await ctx.db.get(authUserId);
+
+    if (authUser) {
+      const email =
+        cleanEmail(authUser.email) ||
+        cleanEmail(identity.email) ||
+        (await findPasswordAccountEmail(ctx, authUser._id));
+
+      return await findCanonicalUserByEmail(ctx, email, authUser);
+    }
+  }
+
   const tokenUser = await ctx.db
     .query("users")
     .withIndex("by_token_identifier", (q) =>
