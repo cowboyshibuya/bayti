@@ -59,12 +59,23 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
     }
 
     const hasHousehold = Boolean(onboardingState.household);
+    const needsProfileSetup =
+      !hasHousehold && !onboardingState.user?.profileSetupCompletedAt;
 
-    if (!hasHousehold && pathname !== "/onboarding") {
-      router.replace("/onboarding");
+    if (needsProfileSetup && pathname !== "/profile/setup") {
+      router.replace("/profile/setup");
+      return;
     }
 
-    if (hasHousehold && pathname === "/onboarding") {
+    if (!hasHousehold && !needsProfileSetup && pathname !== "/onboarding") {
+      router.replace("/onboarding");
+      return;
+    }
+
+    if (
+      hasHousehold &&
+      (pathname === "/onboarding" || pathname === "/profile/setup")
+    ) {
       router.replace("/dashboard");
     }
   }, [onboardingState, pathname, router]);

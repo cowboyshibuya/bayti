@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useQuery } from "convex/react";
-import { Menu, Sparkles } from "lucide-react";
+import { useAuthActions } from "@convex-dev/auth/react";
+import { LogOut, Menu, Sparkles, UserRound } from "lucide-react";
 import { motion } from "framer-motion";
 
 import { api } from "@/convex/_generated/api";
@@ -13,16 +15,35 @@ import { QuickCreateDialog } from "@/components/shared/quick-create-dialog";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { Button } from "@/components/ui/button";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { useHousehold } from "@/lib/household-context";
 
 export function AppHeader() {
+  const router = useRouter();
+  const { signOut } = useAuthActions();
+  const { setActiveHouseholdId } = useHousehold();
   const profile = useQuery(api.users.getCurrentProfile, {});
   const user = profile?.user;
+
+  async function handleSignOut() {
+    setActiveHouseholdId(null);
+    await signOut();
+    router.replace("/login");
+    router.refresh();
+  }
 
   return (
     <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-border bg-background/82 px-4 backdrop-blur-2xl sm:px-6">
@@ -60,21 +81,47 @@ export function AppHeader() {
         </motion.div>
         <ThemeToggle />
         <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}>
-          <Button
-            asChild
-            variant="ghost"
-            className="h-10 rounded-2xl px-2"
-            aria-label="Open profile"
-          >
-            <Link href="/profile">
-              <UserAvatar
-                name={user?.name ?? user?.email ?? "Family member"}
-                imageUrl={profile?.profileImageUrl}
-                className="size-8"
-              />
-              <span className="sr-only">Profile</span>
-            </Link>
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className="h-10 rounded-2xl px-2"
+                aria-label="Open account menu"
+              >
+                <UserAvatar
+                  name={user?.name ?? user?.email ?? "Family member"}
+                  imageUrl={profile?.profileImageUrl}
+                  className="size-8"
+                />
+                <span className="sr-only">Account menu</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 rounded-2xl p-2">
+              <DropdownMenuLabel className="px-2 py-2">
+                <span className="block truncate text-sm font-semibold">
+                  {user?.name ?? "Family member"}
+                </span>
+                <span className="block truncate text-xs font-normal text-muted-foreground">
+                  {user?.email ?? "Signed in"}
+                </span>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild className="rounded-xl">
+                <Link href="/profile">
+                  <UserRound className="size-4" />
+                  Profile
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                variant="destructive"
+                className="rounded-xl"
+                onClick={handleSignOut}
+              >
+                <LogOut className="size-4" />
+                Sign out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </motion.div>
       </div>
     </header>

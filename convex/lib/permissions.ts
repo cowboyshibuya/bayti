@@ -32,13 +32,27 @@ export async function getCurrentUser(
   ctx: QueryCtx | MutationCtx,
 ): Promise<Doc<"users"> | null> {
   const identity = await requireIdentity(ctx);
-
-  return await ctx.db
+  const tokenUser = await ctx.db
     .query("users")
-    .withIndex("by_email", (q) =>
-      q.eq("email", identity.email),
+    .withIndex("by_token_identifier", (q) =>
+      q.eq("tokenIdentifier", identity.tokenIdentifier),
     )
     .unique();
+
+  if (tokenUser) {
+    return tokenUser;
+  }
+
+  if (!identity.email) {
+    return null;
+  }
+
+  const emailMatches = await ctx.db
+    .query("users")
+    .withIndex("email", (q) => q.eq("email", identity.email))
+    .take(2);
+
+  return emailMatches.length === 1 ? emailMatches[0] : null;
 }
 
 export async function requireCurrentUser(

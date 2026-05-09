@@ -29,12 +29,22 @@ export const syncCurrentUser = mutation({
   handler: async (ctx) => {
     const identity = await requireIdentity(ctx);
     const now = Date.now();
-    const existing = await ctx.db
+    const tokenUser = await ctx.db
       .query("users")
-      .withIndex("by_email", (q) =>
-        q.eq("email", identity.email),
+      .withIndex("by_token_identifier", (q) =>
+        q.eq("tokenIdentifier", identity.tokenIdentifier),
       )
       .unique();
+    const emailMatches = identity.email
+      ? await ctx.db
+          .query("users")
+          .withIndex("email", (q) => q.eq("email", identity.email))
+          .take(2)
+      : [];
+    const existingUser =
+      tokenUser ??
+      emailMatches.find((user) => user.tokenIdentifier === undefined) ??
+      null;
 
     const name =
       identity.name ??
@@ -42,29 +52,31 @@ export const syncCurrentUser = mutation({
       identity.preferredUsername ??
       "Family member";
 
-    if (existing) {
+    if (existingUser) {
       const patch: Partial<Doc<"users">> = {
         email: identity.email,
+        tokenIdentifier: identity.tokenIdentifier,
         updatedAt: now,
       };
 
-      if (!existing.name) {
+      if (!existingUser.name) {
         patch.name = name;
       }
 
-      if (!existing.image && identity.pictureUrl) {
+      if (!existingUser.image && identity.pictureUrl) {
         patch.image = identity.pictureUrl;
       }
 
-      await ctx.db.patch(existing._id, patch);
+      await ctx.db.patch(existingUser._id, patch);
 
-      return existing._id;
+      return existingUser._id;
     }
 
     return await ctx.db.insert("users", {
       name,
       email: identity.email,
       image: identity.pictureUrl,
+      tokenIdentifier: identity.tokenIdentifier,
       createdAt: now,
       updatedAt: now,
     });
@@ -116,6 +128,7 @@ export const updateProfile = mutation({
       name,
       profileImageStorageId:
         args.profileImageStorageId ?? previousProfileImageStorageId,
+      profileSetupCompletedAt: user.profileSetupCompletedAt ?? Date.now(),
       updatedAt: Date.now(),
     });
 

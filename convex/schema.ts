@@ -8,6 +8,8 @@ export default defineSchema({
     name: v.optional(v.string()),
     image: v.optional(v.string()),
     profileImageStorageId: v.optional(v.id("_storage")),
+    tokenIdentifier: v.optional(v.string()),
+    profileSetupCompletedAt: v.optional(v.number()),
     email: v.optional(v.string()),
     emailVerificationTime: v.optional(v.number()),
     phone: v.optional(v.string()),
@@ -15,7 +17,10 @@ export default defineSchema({
     isAnonymous: v.optional(v.boolean()),
     createdAt: v.optional(v.number()),
     updatedAt: v.optional(v.number()),
-  }).index("by_email", ["email"]),
+  })
+    .index("email", ["email"])
+    .index("phone", ["phone"])
+    .index("by_token_identifier", ["tokenIdentifier"]),
   households: defineTable({
     name: v.string(),
     createdByUserId: v.id("users"),

@@ -13,7 +13,7 @@ type AuthMode = "signIn" | "signUp";
 
 export function AuthForm({ mode }: { mode: AuthMode }) {
   const router = useRouter();
-  const { signIn } = useAuthActions();
+  const { signIn, signOut } = useAuthActions();
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -21,14 +21,16 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     const nextErrors: Record<string, string> = {};
-    const email = String(formData.get("email") ?? "").trim();
+    const email = String(formData.get("email") ?? "").trim().toLowerCase();
     const password = String(formData.get("password") ?? "");
     const name = String(formData.get("name") ?? "").trim();
 
     if (!email.includes("@")) nextErrors.email = "Enter a valid email.";
-    // if (password.length < 8) nextErrors.password = "Use at least 8 characters.";
+    if (password.length < 8) nextErrors.password = "Use at least 8 characters.";
     if (mode === "signUp" && name.length < 2) {
       nextErrors.name = "Enter your display name.";
+    } else if (mode === "signUp" && name.length > 80) {
+      nextErrors.name = "Use 80 characters or fewer.";
     }
 
     setErrors(nextErrors);
@@ -36,9 +38,17 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
 
     setIsSubmitting(true);
     try {
-      formData.set("flow", mode);
-      await signIn("password", formData);
-      router.push(mode === "signUp" ? "/new-workspace" : "/");
+      if (mode === "signUp") {
+        await signOut();
+      }
+
+      await signIn("password", {
+        flow: mode,
+        email,
+        password,
+        ...(mode === "signUp" ? { name } : {}),
+      });
+      router.push(mode === "signUp" ? "/profile/setup" : "/");
       router.refresh();
     } catch (error) {
       toast.error(
