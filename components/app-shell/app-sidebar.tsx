@@ -25,7 +25,7 @@ export function AppSidebar() {
         <span className="flex size-8 items-center justify-center rounded-2xl bg-muted text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
           <Home className="size-4" />
         </span>
-        <span className="font-heading text-base font-semibold tracking-normal">FamilyOS</span>
+        <span className="font-heading text-base font-semibold tracking-normal">Bayti</span>
       </Link>
 
       <nav className="mt-5 grid gap-1">

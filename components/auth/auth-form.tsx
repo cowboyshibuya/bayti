@@ -64,10 +64,10 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
           <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded bg-primary text-sm font-semibold text-primary-foreground">
-            Shelby
+            B
           </div>
           <h1 className="text-xl font-semibold tracking-tight">
-            {mode === "signIn" ? "Sign in to Shelby" : "Create account"}
+            {mode === "signIn" ? "Sign in to Bayti" : "Create account"}
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
             {mode === "signIn"
