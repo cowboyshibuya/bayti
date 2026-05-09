@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { useMutation } from "convex/react";
 import {Check,ChevronsUpDown,Home,KeyRound,Loader2,Plus} from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -15,11 +15,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useHousehold } from "@/lib/household-context";
@@ -44,6 +39,36 @@ export function HouseholdSwitcher() {
   const [inviteCode, setInviteCode] = useState("");
   const [pending, setPending] = useState<DialogMode>(null);
   const [error, setError] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!menuOpen) {
+      return;
+    }
+
+    function handlePointerDown(event: PointerEvent) {
+      if (
+        menuRef.current &&
+        !menuRef.current.contains(event.target as Node)
+      ) {
+        setMenuOpen(false);
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setMenuOpen(false);
+      }
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [menuOpen]);
 
   function handleSelectHousehold(householdId: Id<"households">) {
     if (householdId === household?._id) {
@@ -135,10 +160,14 @@ export function HouseholdSwitcher() {
 
   return (
     <>
-      <Popover open={menuOpen} onOpenChange={setMenuOpen}>
-        <PopoverTrigger asChild>
+      <div ref={menuRef} className="relative">
           <Button
+            type="button"
             variant="ghost"
+            animated={false}
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen((open) => !open)}
             className="h-10 max-w-[220px] justify-start gap-2 rounded-2xl px-2 sm:max-w-[280px]"
           >
             <span className="flex size-8 shrink-0 items-center justify-center rounded-2xl bg-muted text-foreground">
@@ -154,56 +183,64 @@ export function HouseholdSwitcher() {
             </span>
             <ChevronsUpDown className="ml-auto size-4 shrink-0 text-foreground/42" />
           </Button>
-        </PopoverTrigger>
-        <PopoverContent align="start" className="w-72 gap-1 p-1">
-          <p className="px-1.5 py-1 text-xs font-medium text-muted-foreground">
-            Households
-          </p>
-          {householdOptions.map((option) => (
+
+        {menuOpen && (
+          <div
+            role="menu"
+            className="absolute left-0 top-full z-50 mt-2 flex w-72 flex-col gap-1 rounded-2xl bg-popover p-1 text-sm text-popover-foreground ring-1 ring-foreground/10 [box-shadow:var(--shadow-elevated)] animate-in fade-in-0 zoom-in-95 slide-in-from-top-1"
+          >
+            <p className="px-1.5 py-1 text-xs font-medium text-muted-foreground">
+              Households
+            </p>
+            {householdOptions.map((option) => (
+              <button
+                type="button"
+                role="menuitem"
+                key={option.household._id}
+                onClick={() => handleSelectHousehold(option.household._id)}
+                className={cn(
+                  "flex w-full items-center gap-2 rounded-md px-1.5 py-2 text-left text-sm outline-none transition-colors hover:bg-accent/10 hover:text-accent focus-visible:bg-accent/10 focus-visible:text-accent",
+                  option.household._id === household._id && "text-foreground",
+                )}
+              >
+                <span className="flex size-7 shrink-0 items-center justify-center rounded-xl bg-muted text-foreground">
+                  <Home className="size-3.5" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate font-medium">
+                    {option.household.name}
+                  </span>
+                  <span className="block text-xs capitalize text-muted-foreground">
+                    {option.membership.role}
+                  </span>
+                </span>
+                {option.household._id === household._id && (
+                  <Check className="ml-auto size-4 text-foreground/70" />
+                )}
+              </button>
+            ))}
+            <div className="-mx-1 my-1 h-px bg-border" />
             <button
               type="button"
-              key={option.household._id}
-              onClick={() => handleSelectHousehold(option.household._id)}
-              className={cn(
-                "flex w-full items-center gap-2 rounded-md px-1.5 py-2 text-left text-sm outline-none transition-colors hover:bg-accent/10 hover:text-accent focus-visible:bg-accent/10 focus-visible:text-accent",
-                option.household._id === household._id && "text-foreground",
-              )}
+              role="menuitem"
+              onClick={() => openDialog("create")}
+              className="flex w-full items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-sm outline-none transition-colors hover:bg-accent/10 hover:text-accent focus-visible:bg-accent/10 focus-visible:text-accent"
             >
-              <span className="flex size-7 shrink-0 items-center justify-center rounded-xl bg-muted text-foreground">
-                <Home className="size-3.5" />
-              </span>
-              <span className="min-w-0">
-                <span className="block truncate font-medium">
-                  {option.household.name}
-                </span>
-                <span className="block text-xs capitalize text-muted-foreground">
-                  {option.membership.role}
-                </span>
-              </span>
-              {option.household._id === household._id && (
-                <Check className="ml-auto size-4 text-foreground/70" />
-              )}
+              <Plus className="size-4" />
+              Create household
             </button>
-          ))}
-          <div className="-mx-1 my-1 h-px bg-border" />
-          <button
-            type="button"
-            onClick={() => openDialog("create")}
-            className="flex w-full items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-sm outline-none transition-colors hover:bg-accent/10 hover:text-accent focus-visible:bg-accent/10 focus-visible:text-accent"
-          >
-            <Plus className="size-4" />
-            Create household
-          </button>
-          <button
-            type="button"
-            onClick={() => openDialog("join")}
-            className="flex w-full items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-sm outline-none transition-colors hover:bg-accent/10 hover:text-accent focus-visible:bg-accent/10 focus-visible:text-accent"
-          >
-            <KeyRound className="size-4" />
-            Join household
-          </button>
-        </PopoverContent>
-      </Popover>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => openDialog("join")}
+              className="flex w-full items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-sm outline-none transition-colors hover:bg-accent/10 hover:text-accent focus-visible:bg-accent/10 focus-visible:text-accent"
+            >
+              <KeyRound className="size-4" />
+              Join household
+            </button>
+          </div>
+        )}
+      </div>
 
       <Dialog open={dialogMode !== null} onOpenChange={closeDialog}>
         <DialogContent className="sm:max-w-md">

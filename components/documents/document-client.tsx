@@ -677,7 +677,7 @@ export function DocumentsClient() {
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon-sm">
+                          <Button variant="ghost" size="icon-sm" animated={false}>
                             <MoreHorizontal className="size-4" />
                             <span className="sr-only">Document actions</span>
                           </Button>

@@ -53,11 +53,15 @@ export const syncCurrentUser = mutation({
       "Family member";
 
     if (existingUser) {
-      const patch: Partial<Doc<"users">> = {
-        email: identity.email,
-        tokenIdentifier: identity.tokenIdentifier,
-        updatedAt: now,
-      };
+      const patch: Partial<Doc<"users">> = {};
+
+      if (existingUser.email !== identity.email) {
+        patch.email = identity.email;
+      }
+
+      if (existingUser.tokenIdentifier !== identity.tokenIdentifier) {
+        patch.tokenIdentifier = identity.tokenIdentifier;
+      }
 
       if (!existingUser.name) {
         patch.name = name;
@@ -67,7 +71,10 @@ export const syncCurrentUser = mutation({
         patch.image = identity.pictureUrl;
       }
 
-      await ctx.db.patch(existingUser._id, patch);
+      if (Object.keys(patch).length > 0) {
+        patch.updatedAt = now;
+        await ctx.db.patch(existingUser._id, patch);
+      }
 
       return existingUser._id;
     }

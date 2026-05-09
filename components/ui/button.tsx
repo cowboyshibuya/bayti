@@ -52,14 +52,28 @@ function Button({
   variant = "default",
   size = "default",
   asChild = false,
+  animated = true,
   ...props
 }: React.ComponentPropsWithoutRef<"button"> &
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean
+    animated?: boolean
   }) {
   if (asChild) {
     return (
       <Slot.Root
+        data-slot="button"
+        data-variant={variant}
+        data-size={size}
+        className={cn(buttonVariants({ variant, size, className }))}
+        {...props}
+      />
+    )
+  }
+
+  if (!animated) {
+    return (
+      <button
         data-slot="button"
         data-variant={variant}
         data-size={size}
