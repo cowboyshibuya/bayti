@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
+import Image from "next/image";
 
 type AuthMode = "signIn" | "signUp";
 
@@ -63,9 +64,17 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded bg-primary text-sm font-semibold text-primary-foreground">
-            B
+          <div className="flex items-center justify-center">
+            <Image
+              src="/logo.png"
+              height="100"
+              width="100"
+              alt="logo"
+            />
           </div>
+          {/*<div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded bg-primary text-sm font-semibold text-primary-foreground">
+            B
+          </div>*/}
           <h1 className="text-xl font-semibold tracking-tight">
             {mode === "signIn" ? "Sign in to Bayti" : "Create account"}
           </h1>

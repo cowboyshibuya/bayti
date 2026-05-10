@@ -38,14 +38,21 @@ export default function MarketingPage() {
         <header className="relative z-10 flex h-16 items-center justify-between px-5 sm:px-8 lg:px-10">
           <Link
             href="/"
-            className="flex items-center gap-2 rounded-full bg-white/24 px-2.5 py-2 text-black/78 shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_10px_30px_rgba(0,0,0,0.08)] backdrop-blur-xl transition-colors hover:bg-white/34"
+            // className="flex items-center gap-2 rounded-full bg-white/24 px-2.5 py-2 text-black/78 shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_10px_30px_rgba(0,0,0,0.08)] backdrop-blur-xl transition-colors hover:bg-white/34"
           >
-            <span className="flex size-8 items-center justify-center rounded-full bg-black text-white shadow-sm">
+            <Image
+              src="/logo.png"
+              height="100"
+              width="100"
+              alt="logo"
+            />
+            {/*<span className="flex size-8 items-center justify-center rounded-full bg-black text-white shadow-sm">
               <Home className="size-4" />
-            </span>
-            <span className="pr-1 text-sm font-semibold tracking-normal">
+            </span>*/}
+
+            {/*<span className="pr-1 text-sm font-semibold tracking-normal">
               FamilyOS
-            </span>
+            </span>*/}
           </Link>
 
           <div className="flex items-center gap-2">
