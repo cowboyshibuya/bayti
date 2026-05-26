@@ -7,7 +7,7 @@ import { motion } from "framer-motion";
 
 import type { Doc } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
-import { formatDate } from "@/lib/dates";
+import { formatEventDateTime } from "@/lib/dates";
 import { EventStatusBadge } from "./event-status-badge";
 
 export function EventCard({
@@ -48,8 +48,11 @@ export function EventCard({
         <EventStatusBadge status={event.status} />
         <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/45 px-2 py-0.5 text-xs text-foreground/42 dark:bg-white/[0.035]">
           <CalendarDays className="size-3" />
-          {formatDate(event.startsAt)}
-          {event.isAllDay && " (All day)"}
+          {formatEventDateTime({
+            startsAt: event.startsAt,
+            endsAt: event.endsAt,
+            isAllDay: event.isAllDay,
+          })}
         </span>
         {event.location && (
           <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/45 px-2 py-0.5 text-xs text-foreground/42 dark:bg-white/[0.035]">

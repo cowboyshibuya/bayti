@@ -12,6 +12,7 @@ export type CalendarEntry = {
   title: string;
   date: number;
   endDate?: number;
+  isAllDay?: boolean;
   color: "accent" | "warning" | "info";
   status: string;
   link: string;
@@ -100,6 +101,7 @@ export const getCalendarEntries = query({
           title: event.title,
           date: event.startsAt,
           endDate: event.endsAt ?? undefined,
+          isAllDay: event.isAllDay,
           color: "info",
           status: event.status,
           link: `/events/${event._id}`,

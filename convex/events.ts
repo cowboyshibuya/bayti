@@ -30,6 +30,12 @@ function cleanString(value?: string) {
   return trimmed ? trimmed : undefined;
 }
 
+function validateEventRange(startsAt: number, endsAt?: number) {
+  if (endsAt !== undefined && endsAt <= startsAt) {
+    throw new Error("Event end time must be after the start time.");
+  }
+}
+
 async function requireEventInHousehold(
   ctx: QueryCtx | MutationCtx,
   householdId: Id<"households">,
@@ -66,7 +72,7 @@ async function setEventStatus(
 ) {
   const user = await requireCurrentUser(ctx);
   await requireHouseholdRole(ctx, input.householdId, WRITE_ROLES);
-  const event = await requireEventInHousehold(ctx, input.householdId, input.eventId);
+  await requireEventInHousehold(ctx, input.householdId, input.eventId);
 
   await ctx.db.patch(input.eventId, {
     status: input.status,
@@ -168,6 +174,8 @@ export const create = mutation({
       await requireHouseholdMember(ctx, args.householdId, args.ownerUserId);
     }
 
+    validateEventRange(args.startsAt, args.endsAt);
+
     const now = Date.now();
     const eventId = await ctx.db.insert("events", {
       householdId: args.householdId,
@@ -215,11 +223,16 @@ export const update = mutation({
   handler: async (ctx, args) => {
     const user = await requireCurrentUser(ctx);
     await requireHouseholdRole(ctx, args.householdId, WRITE_ROLES);
-    await requireEventInHousehold(ctx, args.householdId, args.eventId);
+    const event = await requireEventInHousehold(ctx, args.householdId, args.eventId);
 
     if (args.ownerUserId) {
       await requireHouseholdMember(ctx, args.householdId, args.ownerUserId);
     }
+
+    validateEventRange(
+      args.startsAt ?? event.startsAt,
+      args.endsAt === undefined ? event.endsAt : args.endsAt ?? undefined,
+    );
 
     const patch: Record<string, unknown> = { updatedAt: Date.now() };
 

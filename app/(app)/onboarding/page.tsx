@@ -124,7 +124,7 @@ export default function OnboardingPage() {
             <span className="flex size-6 items-center justify-center rounded-full bg-black text-white dark:bg-primary dark:text-primary-foreground">
               F
             </span>
-            FamilyOS
+            Bayti
           </div>
         </header>
 
@@ -139,7 +139,7 @@ export default function OnboardingPage() {
               >
                 <InviteIllustration />
                 <p className="mt-8 text-sm font-semibold text-black/42 dark:text-foreground/42">
-                  Welcome to FamilyOS
+                  Welcome to Bayti
                 </p>
                 <h1 className="mt-3 text-balance text-4xl font-semibold tracking-normal sm:text-5xl">
                   Create or join a workspace

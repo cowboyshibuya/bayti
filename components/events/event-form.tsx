@@ -17,8 +17,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { DatePicker, TimePicker } from "@/components/shared/date-picker";
 import { MemberDisplay } from "@/components/shared/member-display";
 import { EVENT_STATUSES } from "@/lib/constants";
+import {
+  formatDateInputValue,
+  formatTimeInputValue,
+  parseLocalDate,
+  parseLocalDateTime,
+} from "@/lib/dates";
 import { toTitleLabel } from "@/lib/formatters";
 import { eventFormSchema } from "@/lib/validations";
 
@@ -49,8 +56,16 @@ export function EventForm({
   const [description, setDescription] = useState(initialEvent?.description ?? "");
   const [note, setNote] = useState(initialEvent?.note ?? "");
   const [date, setDate] = useState(
-    initialEvent?.startsAt
-      ? new Date(initialEvent.startsAt).toISOString().slice(0, 10)
+    formatDateInputValue(initialEvent?.startsAt),
+  );
+  const [startTime, setStartTime] = useState(
+    initialEvent?.startsAt && !initialEvent.isAllDay
+      ? formatTimeInputValue(initialEvent.startsAt)
+      : "",
+  );
+  const [endTime, setEndTime] = useState(
+    initialEvent?.endsAt && !initialEvent.isAllDay
+      ? formatTimeInputValue(initialEvent.endsAt)
       : "",
   );
   const [isAllDay, setIsAllDay] = useState(initialEvent?.isAllDay ?? true);
@@ -82,6 +97,8 @@ export function EventForm({
       description,
       note,
       date,
+      startTime,
+      endTime,
       isAllDay,
       location,
       status,
@@ -94,9 +111,30 @@ export function EventForm({
       return;
     }
 
+    if (!isAllDay && !startTime) {
+      setError("Choose a start time for timed events.");
+      setPending(false);
+      return;
+    }
+
     const startsAt = isAllDay
-      ? new Date(`${date}T00:00:00`).getTime()
-      : new Date(`${date}T12:00:00`).getTime();
+      ? parseLocalDate(date, "00:00")
+      : parseLocalDateTime(date, startTime);
+    const endsAt = !isAllDay && endTime
+      ? parseLocalDateTime(date, endTime)
+      : undefined;
+
+    if (startsAt === undefined) {
+      setError("Choose a valid event date.");
+      setPending(false);
+      return;
+    }
+
+    if (endsAt !== undefined && endsAt <= startsAt) {
+      setError("End time must be after the start time.");
+      setPending(false);
+      return;
+    }
 
     try {
       await onSubmit({
@@ -104,6 +142,7 @@ export function EventForm({
         description: parsed.data.description,
         note: parsed.data.note,
         startsAt,
+        endsAt,
         isAllDay: parsed.data.isAllDay,
         location: parsed.data.location,
         status,
@@ -155,11 +194,11 @@ export function EventForm({
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="grid gap-2">
           <Label>Date</Label>
-          <Input
-            type="date"
+          <DatePicker
             value={date}
-            onChange={(event) => setDate(event.target.value)}
+            onChange={setDate}
             required
+            allowClear={false}
           />
         </div>
 
@@ -211,11 +250,41 @@ export function EventForm({
         </div>
       </div>
 
+      {!isAllDay && (
+        <div className="grid gap-4 rounded-2xl border bg-muted/20 p-4 sm:grid-cols-2">
+          <div className="grid gap-2">
+            <Label>Start time</Label>
+            <TimePicker
+              value={startTime}
+              onChange={setStartTime}
+              placeholder="Start time"
+              required
+              allowClear={false}
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label>End time</Label>
+            <TimePicker
+              value={endTime}
+              onChange={setEndTime}
+              placeholder="Optional end time"
+            />
+          </div>
+        </div>
+      )}
+
       <div className="rounded-xl border p-4">
         <label className="flex items-center gap-3 text-sm font-medium">
           <Checkbox
             checked={isAllDay}
-            onCheckedChange={(checked) => setIsAllDay(Boolean(checked))}
+            onCheckedChange={(checked) => {
+              const nextIsAllDay = Boolean(checked);
+              setIsAllDay(nextIsAllDay);
+              if (nextIsAllDay) {
+                setStartTime("");
+                setEndTime("");
+              }
+            }}
           />
           All-day event
         </label>

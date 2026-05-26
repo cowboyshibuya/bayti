@@ -15,7 +15,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { DateTimePicker } from "@/components/shared/date-picker";
 import { MemberDisplay } from "@/components/shared/member-display";
+import { formatDateTimeInputValue, parseDateTimeInput } from "@/lib/dates";
 
 export type ReminderFormSubmitValues = {
   title: string;
@@ -41,7 +43,7 @@ export function ReminderForm({
   const [title, setTitle] = useState(initialReminder?.title ?? "");
   const [note, setNote] = useState(initialReminder?.note ?? "");
   const [remindAt, setRemindAt] = useState(() =>
-    toDateTimeLocalValue(initialReminder?.remindAt ?? Date.now() + 60 * 60 * 1000),
+    formatDateTimeInputValue(initialReminder?.remindAt ?? Date.now() + 60 * 60 * 1000),
   );
   const [targetUserId, setTargetUserId] = useState<string>(
     initialReminder?.targetUserId ?? "household",
@@ -63,7 +65,7 @@ export function ReminderForm({
     setError(null);
 
     const cleanTitle = title.trim();
-    const timestamp = new Date(remindAt).getTime();
+    const timestamp = parseDateTimeInput(remindAt);
 
     if (!cleanTitle) {
       setError("Reminder title is required.");
@@ -71,7 +73,7 @@ export function ReminderForm({
       return;
     }
 
-    if (Number.isNaN(timestamp)) {
+    if (timestamp === undefined) {
       setError("Choose a valid reminder time.");
       setPending(false);
       return;
@@ -119,11 +121,9 @@ export function ReminderForm({
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="grid gap-2">
           <Label htmlFor="reminder-at">Remind at</Label>
-          <Input
-            id="reminder-at"
-            type="datetime-local"
+          <DateTimePicker
             value={remindAt}
-            onChange={(event) => setRemindAt(event.target.value)}
+            onChange={setRemindAt}
             required
           />
         </div>
@@ -161,10 +161,4 @@ export function ReminderForm({
       </Button>
     </form>
   );
-}
-
-function toDateTimeLocalValue(timestamp: number) {
-  const date = new Date(timestamp);
-  const offset = date.getTimezoneOffset() * 60 * 1000;
-  return new Date(date.getTime() - offset).toISOString().slice(0, 16);
 }

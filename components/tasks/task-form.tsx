@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { DatePicker } from "@/components/shared/date-picker";
 import { MemberDisplay } from "@/components/shared/member-display";
 import {
   RECURRENCE_FREQUENCIES,
@@ -25,6 +26,7 @@ import {
   TASK_TYPES,
 } from "@/lib/constants";
 import { toTitleLabel } from "@/lib/formatters";
+import { formatDateInputValue, parseLocalDate } from "@/lib/dates";
 import { taskFormSchema } from "@/lib/validations";
 
 export type TaskFormSubmitValues = {
@@ -68,7 +70,7 @@ export function TaskForm({
     initialTask?.ownerUserId ?? "unassigned",
   );
   const [dueDate, setDueDate] = useState(
-    initialTask?.dueAt ? new Date(initialTask.dueAt).toISOString().slice(0, 10) : "",
+    formatDateInputValue(initialTask?.dueAt),
   );
   const [recurring, setRecurring] = useState(false);
   const [frequency, setFrequency] =
@@ -109,7 +111,7 @@ export function TaskForm({
       return;
     }
 
-    const dueAt = dueDate ? new Date(`${dueDate}T12:00:00`).getTime() : undefined;
+    const dueAt = parseLocalDate(dueDate);
 
     try {
       await onSubmit({
@@ -201,10 +203,9 @@ export function TaskForm({
 
         <div className="grid gap-2">
           <Label>Due date</Label>
-          <Input
-            type="date"
+          <DatePicker
             value={dueDate}
-            onChange={(event) => setDueDate(event.target.value)}
+            onChange={setDueDate}
           />
         </div>
 

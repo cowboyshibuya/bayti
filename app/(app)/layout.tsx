@@ -38,12 +38,12 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   }, [isLoading, isAuthenticated, syncCurrentUser]);
 
   if (isLoading) {
-    return <LoadingState label="Preparing FamilyOS" />;
+    return <LoadingState label="Preparing Bayti" />;
   }
 
   if (!isAuthenticated) {
     router.replace("/login");
-    return <LoadingState label="Preparing FamilyOS" />;
+    return <LoadingState label="Preparing Bayti" />;
   }
 
   return (
@@ -116,7 +116,7 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
   }, [onboardingState, pathname, router]);
 
   if (onboardingState === undefined) {
-    return <LoadingState label="Preparing FamilyOS" />;
+    return <LoadingState label="Preparing Bayti" />;
   }
 
   if (onboardingState.needsUserSync) {

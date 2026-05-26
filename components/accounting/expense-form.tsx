@@ -15,8 +15,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { DatePicker } from "@/components/shared/date-picker";
 import { MemberDisplay } from "@/components/shared/member-display";
 import { DEFAULT_CURRENCY, EXPENSE_CATEGORIES, type ExpenseCategory } from "@/lib/constants";
+import { formatDateInputValue, parseLocalDate } from "@/lib/dates";
 
 export type ExpenseFormSubmitValues = {
   title: string;
@@ -45,10 +47,10 @@ export function ExpenseForm({
   const [merchant, setMerchant] = useState(initialExpense?.merchant ?? "");
   const [amount, setAmount] = useState<string>(initialExpense?.amount?.toString() ?? "");
   const [currency, setCurrency] = useState(initialExpense?.currency ?? DEFAULT_CURRENCY);
-  const [spentDate, setSpentDate] = useState(
+  const [spentDate, setSpentDate] = useState(() =>
     initialExpense?.spentAt
-      ? new Date(initialExpense.spentAt).toISOString().slice(0, 10)
-      : new Date().toISOString().slice(0, 10),
+      ? formatDateInputValue(initialExpense.spentAt)
+      : formatDateInputValue(Date.now()),
   );
   const [category, setCategory] = useState<ExpenseCategory>(
     (initialExpense?.category as ExpenseCategory) ?? "Groceries",
@@ -82,7 +84,13 @@ export function ExpenseForm({
       return;
     }
 
-    const spentAt = new Date(`${spentDate}T12:00:00`).getTime();
+    const spentAt = parseLocalDate(spentDate);
+
+    if (spentAt === undefined) {
+      setError("Choose a valid expense date.");
+      setPending(false);
+      return;
+    }
 
     try {
       await onSubmit({
@@ -156,7 +164,12 @@ export function ExpenseForm({
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="grid gap-2">
           <Label>Date</Label>
-          <Input type="date" value={spentDate} onChange={(e) => setSpentDate(e.target.value)} required />
+          <DatePicker
+            value={spentDate}
+            onChange={setSpentDate}
+            required
+            allowClear={false}
+          />
         </div>
         <div className="grid gap-2">
           <Label>Category</Label>

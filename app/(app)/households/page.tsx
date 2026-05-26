@@ -49,7 +49,7 @@ export default function HouseholdSelectionPage() {
             <span className="flex size-6 items-center justify-center rounded-full bg-black text-white dark:bg-primary dark:text-primary-foreground">
               <Home className="size-3.5" />
             </span>
-            FamilyOS
+            Bayti
           </div>
         </header>
 

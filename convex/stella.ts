@@ -852,7 +852,7 @@ async function callOpenRouter(
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
       "HTTP-Referer": "http://localhost:3000",
-      "X-Title": "FamilyOS Stella",
+      "X-Title": "Bayti Stella",
     },
     body: JSON.stringify({
       model: prepared.modelId,

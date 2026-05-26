@@ -6,12 +6,11 @@ import {
   CalendarDays,
   CheckSquare,
   Clock,
-  MapPin,
   ReceiptText,
 } from "lucide-react";
 
 import type { CalendarEntry } from "./types";
-import { formatDate, formatDateTime } from "@/lib/dates";
+import { formatDate, formatEventDateTime } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 
 const typeConfig = {
@@ -118,16 +117,13 @@ export function CalendarEntryCard({
             <span className="inline-flex items-center gap-1">
               <Clock className="size-3" />
               {entry.entityType === "event"
-                ? formatDateTime(entry.date)
+                ? formatEventDateTime({
+                    startsAt: entry.date,
+                    endsAt: entry.endDate,
+                    isAllDay: entry.isAllDay,
+                  })
                 : formatDate(entry.date)}
-              {entry.endDate && ` – ${formatDateTime(entry.endDate)}`}
             </span>
-            {entry.entityType === "event" && entry.endDate && (
-              <span className="inline-flex items-center gap-1">
-                <MapPin className="size-3" />
-                Multi-day
-              </span>
-            )}
           </div>
         </div>
       </div>

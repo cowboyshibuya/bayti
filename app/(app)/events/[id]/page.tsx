@@ -28,7 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { EVENT_STATUSES } from "@/lib/constants";
-import { formatDate, formatDateTime } from "@/lib/dates";
+import { formatDateTime, formatEventDateTime } from "@/lib/dates";
 import { toTitleLabel } from "@/lib/formatters";
 import { useHousehold } from "@/lib/household-context";
 
@@ -122,7 +122,7 @@ export default function EventDetailPage({
                 <DialogHeader>
                   <DialogTitle>Edit event</DialogTitle>
                   <DialogDescription>
-                    Update date, note, location, or event details.
+                    Update date, time, note, location, or event details.
                   </DialogDescription>
                 </DialogHeader>
                 <EventForm
@@ -149,7 +149,15 @@ export default function EventDetailPage({
         <div className="rounded-2xl border bg-card p-5 [box-shadow:var(--shadow-card)]">
           <h2 className="font-semibold">Event details</h2>
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
-            <DetailItem label="Date" value={formatDate(event.startsAt)} icon={CalendarDays} />
+            <DetailItem
+              label="Date"
+              value={formatEventDateTime({
+                startsAt: event.startsAt,
+                endsAt: event.endsAt,
+                isAllDay: event.isAllDay,
+              })}
+              icon={CalendarDays}
+            />
             {event.location && (
               <DetailItem label="Location" value={event.location} icon={MapPin} />
             )}

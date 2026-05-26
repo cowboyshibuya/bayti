@@ -51,7 +51,7 @@ export default function MarketingPage() {
             </span>*/}
 
             {/*<span className="pr-1 text-sm font-semibold tracking-normal">
-              FamilyOS
+              Bayti
             </span>*/}
           </Link>
 
@@ -116,7 +116,7 @@ export default function MarketingPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.55, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
             >
-              FamilyOS keeps tasks, bills, events, notes, and shared routines in
+              Bayti keeps tasks, bills, events, notes, and shared routines in
               one calm family workspace.
             </motion.p>
 

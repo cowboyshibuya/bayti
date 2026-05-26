@@ -14,7 +14,9 @@ import type { FunctionReturnType } from "convex/server";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 
-const ACTIVE_HOUSEHOLD_STORAGE_KEY = "familyos.activeHouseholdId";
+const ACTIVE_HOUSEHOLD_STORAGE_KEY = "bayti.activeHouseholdId";
+const LEGACY_ACTIVE_HOUSEHOLD_STORAGE_KEY = "familyos.activeHouseholdId";
+const ACTIVE_HOUSEHOLD_CHANGED_EVENT = "bayti.activeHouseholdChanged";
 
 type OnboardingState = FunctionReturnType<typeof api.households.getOnboardingState>;
 
@@ -34,9 +36,28 @@ function readStoredHouseholdId() {
     return null;
   }
 
-  return window.localStorage.getItem(
+  const storedHouseholdId = window.localStorage.getItem(
     ACTIVE_HOUSEHOLD_STORAGE_KEY,
-  ) as Id<"households"> | null;
+  );
+
+  if (storedHouseholdId) {
+    return storedHouseholdId as Id<"households">;
+  }
+
+  const legacyHouseholdId = window.localStorage.getItem(
+    LEGACY_ACTIVE_HOUSEHOLD_STORAGE_KEY,
+  );
+
+  if (legacyHouseholdId) {
+    window.localStorage.setItem(
+      ACTIVE_HOUSEHOLD_STORAGE_KEY,
+      legacyHouseholdId,
+    );
+    window.localStorage.removeItem(LEGACY_ACTIVE_HOUSEHOLD_STORAGE_KEY);
+    return legacyHouseholdId as Id<"households">;
+  }
+
+  return null;
 }
 
 function subscribeToStoredHouseholdId(onStoreChange: () => void) {
@@ -45,11 +66,11 @@ function subscribeToStoredHouseholdId(onStoreChange: () => void) {
   }
 
   window.addEventListener("storage", onStoreChange);
-  window.addEventListener("familyos.activeHouseholdChanged", onStoreChange);
+  window.addEventListener(ACTIVE_HOUSEHOLD_CHANGED_EVENT, onStoreChange);
 
   return () => {
     window.removeEventListener("storage", onStoreChange);
-    window.removeEventListener("familyos.activeHouseholdChanged", onStoreChange);
+    window.removeEventListener(ACTIVE_HOUSEHOLD_CHANGED_EVENT, onStoreChange);
   };
 }
 
@@ -64,7 +85,7 @@ function writeStoredHouseholdId(householdId: Id<"households"> | null) {
     window.localStorage.removeItem(ACTIVE_HOUSEHOLD_STORAGE_KEY);
   }
 
-  window.dispatchEvent(new Event("familyos.activeHouseholdChanged"));
+  window.dispatchEvent(new Event(ACTIVE_HOUSEHOLD_CHANGED_EVENT));
 }
 
 export function HouseholdProvider({ children }: { children: ReactNode }) {

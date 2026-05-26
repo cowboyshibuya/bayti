@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { DatePicker } from "@/components/shared/date-picker";
 import { MemberDisplay } from "@/components/shared/member-display";
 import {
   BILL_STATUSES,
@@ -24,6 +25,7 @@ import {
   TASK_PRIORITIES,
 } from "@/lib/constants";
 import { toTitleLabel } from "@/lib/formatters";
+import { formatDateInputValue, parseLocalDate } from "@/lib/dates";
 import { billFormSchema } from "@/lib/validations";
 
 export type BillFormSubmitValues = {
@@ -74,7 +76,7 @@ export function BillForm({
     initialBill?.ownerUserId ?? "unassigned",
   );
   const [dueDate, setDueDate] = useState(
-    initialBill?.dueAt ? new Date(initialBill.dueAt).toISOString().slice(0, 10) : "",
+    formatDateInputValue(initialBill?.dueAt),
   );
   const [autopay, setAutopay] = useState(initialBill?.autopay ?? false);
   const [recurring, setRecurring] = useState(Boolean(initialRecurrence));
@@ -119,7 +121,7 @@ export function BillForm({
       return;
     }
 
-    const dueAt = dueDate ? new Date(`${dueDate}T12:00:00`).getTime() : undefined;
+    const dueAt = parseLocalDate(dueDate);
 
     if (recurring && !dueAt) {
       setError("Recurring bills need a due date.");
@@ -219,10 +221,9 @@ export function BillForm({
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="grid gap-2">
           <Label>Due date</Label>
-          <Input
-            type="date"
+          <DatePicker
             value={dueDate}
-            onChange={(event) => setDueDate(event.target.value)}
+            onChange={setDueDate}
           />
         </div>
 

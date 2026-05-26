@@ -13,6 +13,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { DatePicker } from "@/components/shared/date-picker";
+import { formatDateInputValue, parseLocalDate } from "@/lib/dates";
 import { toTitleLabel } from "@/lib/formatters";
 
 export const documentTypes = [
@@ -39,19 +41,6 @@ export type DocumentFormSubmitValues = {
   expiresAt?: number;
 };
 
-function dateValue(timestamp?: number) {
-  if (!timestamp) return "";
-  const date = new Date(timestamp);
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function parseDate(value: string) {
-  return value ? new Date(`${value}T00:00:00`).getTime() : undefined;
-}
-
 export function DocumentForm({
   folders,
   initialDocument,
@@ -77,8 +66,8 @@ export function DocumentForm({
     initialDocument?.amount !== undefined ? String(initialDocument.amount) : "",
   );
   const [currency, setCurrency] = useState(initialDocument?.currency ?? "EUR");
-  const [issuedAt, setIssuedAt] = useState(dateValue(initialDocument?.issuedAt));
-  const [expiresAt, setExpiresAt] = useState(dateValue(initialDocument?.expiresAt));
+  const [issuedAt, setIssuedAt] = useState(formatDateInputValue(initialDocument?.issuedAt));
+  const [expiresAt, setExpiresAt] = useState(formatDateInputValue(initialDocument?.expiresAt));
   const [file, setFile] = useState<File | undefined>();
   const [submitting, setSubmitting] = useState(false);
 
@@ -103,8 +92,8 @@ export function DocumentForm({
         vendor: vendor.trim() || undefined,
         amount: amount.trim() ? Number(amount) : undefined,
         currency: currency.trim() || undefined,
-        issuedAt: parseDate(issuedAt),
-        expiresAt: parseDate(expiresAt),
+        issuedAt: parseLocalDate(issuedAt, "00:00"),
+        expiresAt: parseLocalDate(expiresAt, "00:00"),
       });
     } finally {
       setSubmitting(false);
@@ -212,20 +201,18 @@ export function DocumentForm({
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="grid gap-2">
           <Label htmlFor="document-issued">Issued</Label>
-          <Input
-            id="document-issued"
-            type="date"
+          <DatePicker
             value={issuedAt}
-            onChange={(event) => setIssuedAt(event.target.value)}
+            onChange={setIssuedAt}
+            placeholder="Issued date"
           />
         </div>
         <div className="grid gap-2">
           <Label htmlFor="document-expires">Expires</Label>
-          <Input
-            id="document-expires"
-            type="date"
+          <DatePicker
             value={expiresAt}
-            onChange={(event) => setExpiresAt(event.target.value)}
+            onChange={setExpiresAt}
+            placeholder="Expiry date"
           />
         </div>
       </div>

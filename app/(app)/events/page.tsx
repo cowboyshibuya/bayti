@@ -105,7 +105,7 @@ export default function EventsPage() {
               <DialogHeader>
                 <DialogTitle>Add event</DialogTitle>
                 <DialogDescription>
-                  Add a date, note, location, and household context.
+                  Add a date, time, note, location, and household context.
                 </DialogDescription>
               </DialogHeader>
               <EventForm

@@ -65,6 +65,8 @@ export const eventFormSchema = z.object({
   description: z.string().trim().optional(),
   note: z.string().trim().optional(),
   date: z.string().min(1, "Date is required."),
+  startTime: z.string().optional(),
+  endTime: z.string().optional(),
   isAllDay: z.boolean().default(false),
   location: z.string().trim().optional(),
   status: z.enum(EVENT_STATUSES),
