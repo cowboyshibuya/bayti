@@ -16,6 +16,11 @@ import {
   requireHouseholdRole,
 } from "./lib/permissions";
 import {
+  deleteDocumentLinksForEntity,
+  deleteLinkedReminders,
+  deleteTaggingsForEntity,
+} from "./lib/deleteCleanup";
+import {
   recurrenceFrequencyValidator,
   taskPriorityValidator,
   taskStatusValidator,
@@ -425,6 +430,9 @@ export const remove = mutation({
     const task = await requireTaskInHousehold(ctx, args.householdId, args.taskId);
     await canRemoveTask(ctx, args.householdId, task, user._id);
 
+    await deleteLinkedReminders(ctx, args.householdId, "task", args.taskId);
+    await deleteDocumentLinksForEntity(ctx, args.householdId, "task", args.taskId);
+    await deleteTaggingsForEntity(ctx, args.householdId, ENTITY_TYPES.task, args.taskId);
     await ctx.db.delete(args.taskId);
 
     await writeActivityEvent(ctx, {

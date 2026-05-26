@@ -10,6 +10,10 @@ import {
   requireHouseholdMember,
   requireHouseholdRole,
 } from "./lib/permissions";
+import {
+  deleteLinkedReminders,
+  deleteTaggingsForEntity,
+} from "./lib/deleteCleanup";
 import { documentTypeValidator } from "./lib/validators";
 import { enrichUser } from "./lib/users";
 
@@ -296,6 +300,9 @@ export const remove = mutation({
     for (const link of links) {
       await ctx.db.delete(link._id);
     }
+
+    await deleteLinkedReminders(ctx, args.householdId, "document", args.documentId);
+    await deleteTaggingsForEntity(ctx, args.householdId, ENTITY_TYPES.document, args.documentId);
 
     if (document.storageId) {
       await ctx.storage.delete(document.storageId);

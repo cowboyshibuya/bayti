@@ -2,13 +2,15 @@
 
 import { use, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
-import { ArrowLeft, CalendarDays, MapPin, StickyNote } from "lucide-react";
+import { ArrowLeft, CalendarDays, MapPin, StickyNote, Trash2 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import { Doc, Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
 import { RecentActivityPanel } from "@/components/dashboard/recent-activity-panel";
 import { LoadingState } from "@/components/shared/loading-state";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { EventForm, type EventFormSubmitValues } from "@/components/events/event-form";
 import { EventStatusBadge } from "@/components/events/event-status-badge";
 import { Button } from "@/components/ui/button";
@@ -38,6 +40,7 @@ export default function EventDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const router = useRouter();
   const { household } = useHousehold();
   const householdId = household?._id;
   const event = useQuery(
@@ -57,7 +60,11 @@ export default function EventDetailPage({
   const updateEvent = useMutation(api.events.update);
   const updateStatus = useMutation(api.events.updateStatus);
   const cancelEvent = useMutation(api.events.cancel);
+  const removeEvent = useMutation(api.events.remove);
   const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deletePending, setDeletePending] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   if (!householdId || event === undefined || members === undefined) {
     return <LoadingState label="Loading event" />;
@@ -85,6 +92,23 @@ export default function EventDetailPage({
   async function handleStatusChange(status: Doc<"events">["status"]) {
     if (!householdId || !event) return;
     await updateStatus({ householdId, eventId: event._id, status });
+  }
+
+  async function handleDelete() {
+    if (!householdId || !event) return;
+
+    setDeletePending(true);
+    setDeleteError(null);
+
+    try {
+      await removeEvent({ householdId, eventId: event._id });
+      setDeleteOpen(false);
+      router.push("/events");
+    } catch (caught) {
+      setDeleteError(caught instanceof Error ? caught.message : "Could not delete event.");
+    } finally {
+      setDeletePending(false);
+    }
   }
 
   return (
@@ -141,6 +165,10 @@ export default function EventDetailPage({
                 Cancel
               </Button>
             )}
+            <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
+              <Trash2 className="size-4" />
+              Delete
+            </Button>
           </div>
         </div>
       </div>
@@ -186,6 +214,19 @@ export default function EventDetailPage({
 
         <RecentActivityPanel activity={activity ?? []} />
       </section>
+      <ConfirmDialog
+        open={deleteOpen}
+        onOpenChange={(open) => {
+          setDeleteOpen(open);
+          if (!open) setDeleteError(null);
+        }}
+        title="Delete event?"
+        description={`This permanently deletes "${event.title}" and related reminders. This cannot be undone.`}
+        actionLabel="Delete event"
+        pending={deletePending}
+        error={deleteError}
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }

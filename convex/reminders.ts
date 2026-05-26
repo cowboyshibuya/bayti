@@ -264,3 +264,34 @@ export const cancel = mutation({
     return args.reminderId;
   },
 });
+
+export const remove = mutation({
+  args: {
+    householdId: v.id("households"),
+    reminderId: v.id("reminders"),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireCurrentUser(ctx);
+    await requireHouseholdRole(ctx, args.householdId, WRITE_ROLES);
+    const reminder = await requireReminderInHousehold(
+      ctx,
+      args.householdId,
+      args.reminderId,
+    );
+
+    await ctx.db.delete(args.reminderId);
+
+    await writeActivityEvent(ctx, {
+      householdId: args.householdId,
+      actorUserId: user._id,
+      action: ACTIVITY_ACTIONS.reminderDeleted,
+      entityType: ENTITY_TYPES.reminder,
+      entityId: args.reminderId,
+      message: reminder.title
+        ? `Deleted reminder "${reminder.title}".`
+        : "Deleted reminder.",
+    });
+
+    return args.reminderId;
+  },
+});

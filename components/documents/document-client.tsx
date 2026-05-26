@@ -31,6 +31,7 @@ import {
 } from "@/components/documents/folder-form";
 import { EmptyState } from "@/components/shared/empty-state";
 import { LoadingState } from "@/components/shared/loading-state";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { MemberDisplay, type MemberWithUser } from "@/components/shared/member-display";
 import { UserAvatar } from "../shared/user-avatar";
 import { Badge } from "@/components/ui/badge";
@@ -149,6 +150,9 @@ export function DocumentsClient() {
   const [folderDialogOpen, setFolderDialogOpen] = useState(false);
   const [editingDocument, setEditingDocument] = useState<Doc<"documents"> | null>(null);
   const [editingFolder, setEditingFolder] = useState<Doc<"documentFolders"> | null>(null);
+  const [documentToDelete, setDocumentToDelete] = useState<Doc<"documents"> | null>(null);
+  const [folderToDelete, setFolderToDelete] = useState<Doc<"documentFolders"> | null>(null);
+  const [deletePending, setDeletePending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const foldersResult = useQuery(
@@ -308,29 +312,39 @@ export function DocumentsClient() {
     }
   }
 
-  async function handleRemoveDocument(document: Doc<"documents">) {
-    if (!window.confirm(`Delete "${document.title}"?`)) return;
+  async function handleRemoveDocument() {
+    if (!documentToDelete) return;
+
+    setDeletePending(true);
     setError(null);
     try {
       await removeDocument({
         householdId: currentHouseholdId,
-        documentId: document._id,
+        documentId: documentToDelete._id,
       });
+      setDocumentToDelete(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not delete document.");
+    } finally {
+      setDeletePending(false);
     }
   }
 
-  async function handleRemoveFolder(folder: Doc<"documentFolders">) {
-    if (!window.confirm(`Delete folder "${folder.name}"?`)) return;
+  async function handleRemoveFolder() {
+    if (!folderToDelete) return;
+
+    setDeletePending(true);
     setError(null);
     try {
       await removeFolder({
         householdId: currentHouseholdId,
-        folderId: folder._id,
+        folderId: folderToDelete._id,
       });
+      setFolderToDelete(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not delete folder.");
+    } finally {
+      setDeletePending(false);
     }
   }
 
@@ -533,7 +547,8 @@ export function DocumentsClient() {
                           variant="destructive"
                           onClick={(event) => {
                             event.stopPropagation();
-                            void handleRemoveFolder(item.folder!);
+                            setError(null);
+                            setFolderToDelete(item.folder!);
                           }}
                         >
                           <Trash2 className="size-4" />
@@ -699,7 +714,10 @@ export function DocumentsClient() {
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             variant="destructive"
-                            onClick={() => void handleRemoveDocument(row.document)}
+                            onClick={() => {
+                              setError(null);
+                              setDocumentToDelete(row.document);
+                            }}
                           >
                             <Trash2 className="size-4" />
                             Delete
@@ -758,6 +776,44 @@ export function DocumentsClient() {
           )}
         </DialogContent>
       </Dialog>
+      <ConfirmDialog
+        open={Boolean(documentToDelete)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDocumentToDelete(null);
+            setError(null);
+          }
+        }}
+        title="Delete document?"
+        description={
+          documentToDelete
+            ? `This permanently deletes "${documentToDelete.title}", its file, links, and reminders. This cannot be undone.`
+            : "This permanently deletes the document."
+        }
+        actionLabel="Delete document"
+        pending={deletePending}
+        error={documentToDelete ? error : null}
+        onConfirm={handleRemoveDocument}
+      />
+      <ConfirmDialog
+        open={Boolean(folderToDelete)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setFolderToDelete(null);
+            setError(null);
+          }
+        }}
+        title="Delete folder?"
+        description={
+          folderToDelete
+            ? `This permanently deletes the "${folderToDelete.name}" folder. Move or delete documents in this folder first.`
+            : "This permanently deletes the folder."
+        }
+        actionLabel="Delete folder"
+        pending={deletePending}
+        error={folderToDelete ? error : null}
+        onConfirm={handleRemoveFolder}
+      />
     </div>
   );
 }

@@ -30,7 +30,6 @@ export default function ShoppingPage() {
     householdId ? { householdId } : "skip",
   );
   const createList = useMutation(api.shopping.createList);
-  const deleteList = useMutation(api.shopping.deleteList);
 
   if (!householdId || lists === undefined) {
     return <LoadingState label="Loading shopping lists" />;
@@ -44,10 +43,6 @@ export default function ShoppingPage() {
       name: values.name,
     });
     setOpen(false);
-  }
-
-  async function handleDelete(list: Doc<"shoppingLists">) {
-    await deleteList({ householdId: currentHouseholdId, listId: list._id });
   }
 
   const activeLists = lists.filter((list) => list.status === "active");
@@ -95,7 +90,6 @@ export default function ShoppingPage() {
           <ListGrid
             lists={activeLists}
             householdId={currentHouseholdId}
-            onDelete={handleDelete}
             emptyTitle="No active lists"
             emptyDescription="Create a list to start tracking shopping items."
           />
@@ -105,7 +99,6 @@ export default function ShoppingPage() {
           <ListGrid
             lists={archivedLists}
             householdId={currentHouseholdId}
-            onDelete={handleDelete}
             emptyTitle="No archived lists"
             emptyDescription="Archived lists appear here."
           />
@@ -118,13 +111,11 @@ export default function ShoppingPage() {
 function ListGrid({
   lists,
   householdId,
-  onDelete,
   emptyTitle,
   emptyDescription,
 }: {
   lists: Doc<"shoppingLists">[];
   householdId: Id<"households">;
-  onDelete: (list: Doc<"shoppingLists">) => void;
   emptyTitle: string;
   emptyDescription: string;
 }) {

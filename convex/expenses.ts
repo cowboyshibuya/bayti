@@ -14,6 +14,10 @@ import {
   requireHouseholdMember,
   requireHouseholdRole,
 } from "./lib/permissions";
+import {
+  deleteDocumentLinksForEntity,
+  deleteTaggingsForEntity,
+} from "./lib/deleteCleanup";
 import { expenseCategoryValidator } from "./lib/validators";
 
 function cleanTitle(title: string) {
@@ -220,6 +224,8 @@ export const remove = mutation({
     const expense = await requireExpenseInHousehold(ctx, args.householdId, args.expenseId);
     await requireHouseholdRole(ctx, args.householdId, ADULT_ROLES);
 
+    await deleteDocumentLinksForEntity(ctx, args.householdId, "expense", args.expenseId);
+    await deleteTaggingsForEntity(ctx, args.householdId, ENTITY_TYPES.expense, args.expenseId);
     await ctx.db.delete(args.expenseId);
 
     await writeActivityEvent(ctx, {

@@ -2,14 +2,16 @@
 
 import { use, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
-import { ArrowLeft, CalendarClock, CreditCard, ReceiptText, Repeat } from "lucide-react";
+import { ArrowLeft, CalendarClock, CreditCard, ReceiptText, Repeat, Trash2 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 
 import { Doc, Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
 import { RecentActivityPanel } from "@/components/dashboard/recent-activity-panel";
 import { LoadingState } from "@/components/shared/loading-state";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { MemberDisplay, findMemberByUserId } from "@/components/shared/member-display";
 import { BillForm, type BillFormSubmitValues } from "@/components/bills/bill-form";
 import { BillStatusBadge } from "@/components/bills/bill-status-badge";
@@ -42,6 +44,7 @@ export default function BillDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const router = useRouter();
   const { household } = useHousehold();
   const householdId = household?._id;
   const billDetails = useQuery(
@@ -62,7 +65,11 @@ export default function BillDetailPage({
   const updateStatus = useMutation(api.bills.updateStatus);
   const markPaid = useMutation(api.bills.markPaid);
   const cancelBill = useMutation(api.bills.cancel);
+  const removeBill = useMutation(api.bills.remove);
   const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deletePending, setDeletePending] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   if (!householdId || billDetails === undefined || members === undefined) {
     return <LoadingState label="Loading bill" />;
@@ -102,6 +109,23 @@ export default function BillDetailPage({
     }
 
     await updateStatus({ householdId, billId: bill._id, status });
+  }
+
+  async function handleDelete() {
+    if (!householdId || !bill) return;
+
+    setDeletePending(true);
+    setDeleteError(null);
+
+    try {
+      await removeBill({ householdId, billId: bill._id });
+      setDeleteOpen(false);
+      router.push("/bills");
+    } catch (caught) {
+      setDeleteError(caught instanceof Error ? caught.message : "Could not delete bill.");
+    } finally {
+      setDeletePending(false);
+    }
   }
 
   return (
@@ -177,6 +201,10 @@ export default function BillDetailPage({
                 Cancel
               </Button>
             )}
+            <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
+              <Trash2 className="size-4" />
+              Delete
+            </Button>
           </div>
         </div>
       </div>
@@ -239,6 +267,19 @@ export default function BillDetailPage({
 
         <RecentActivityPanel activity={activity ?? []} />
       </section>
+      <ConfirmDialog
+        open={deleteOpen}
+        onOpenChange={(open) => {
+          setDeleteOpen(open);
+          if (!open) setDeleteError(null);
+        }}
+        title="Delete bill?"
+        description={`This permanently deletes "${bill.title}" and related reminders. This cannot be undone.`}
+        actionLabel="Delete bill"
+        pending={deletePending}
+        error={deleteError}
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }

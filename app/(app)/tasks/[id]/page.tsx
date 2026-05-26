@@ -2,13 +2,15 @@
 
 import { use, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
-import { ArrowLeft, CalendarClock, Repeat } from "lucide-react";
+import { ArrowLeft, CalendarClock, Repeat, Trash2 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import { Doc, Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
 import { RecentActivityPanel } from "@/components/dashboard/recent-activity-panel";
 import { LoadingState } from "@/components/shared/loading-state";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { TaskForm, type TaskFormSubmitValues } from "@/components/tasks/task-form";
 import { TaskPriorityBadge } from "@/components/tasks/task-priority-badge";
 import { TaskStatusBadge } from "@/components/tasks/task-status-badge";
@@ -39,6 +41,7 @@ export default function TaskDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const router = useRouter();
   const { household } = useHousehold();
   const householdId = household?._id;
   const task = useQuery(
@@ -59,8 +62,12 @@ export default function TaskDetailPage({
   const updateStatus = useMutation(api.tasks.updateStatus);
   const markDone = useMutation(api.tasks.markDone);
   const cancelTask = useMutation(api.tasks.cancel);
+  const removeTask = useMutation(api.tasks.remove);
   const generateRecurringInstances = useMutation(api.tasks.generateRecurringInstances);
   const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deletePending, setDeletePending] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   if (!householdId || task === undefined || members === undefined) {
     return <LoadingState label="Loading task" />;
@@ -91,6 +98,23 @@ export default function TaskDetailPage({
     }
 
     await updateStatus({ householdId, taskId: task._id, status });
+  }
+
+  async function handleDelete() {
+    if (!householdId || !task) return;
+
+    setDeletePending(true);
+    setDeleteError(null);
+
+    try {
+      await removeTask({ householdId, taskId: task._id });
+      setDeleteOpen(false);
+      router.push("/tasks");
+    } catch (caught) {
+      setDeleteError(caught instanceof Error ? caught.message : "Could not delete task.");
+    } finally {
+      setDeletePending(false);
+    }
   }
 
   return (
@@ -151,6 +175,10 @@ export default function TaskDetailPage({
                 Cancel
               </Button>
             )}
+            <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
+              <Trash2 className="size-4" />
+              Delete
+            </Button>
           </div>
         </div>
       </div>
@@ -201,6 +229,19 @@ export default function TaskDetailPage({
 
         <RecentActivityPanel activity={activity ?? []} />
       </section>
+      <ConfirmDialog
+        open={deleteOpen}
+        onOpenChange={(open) => {
+          setDeleteOpen(open);
+          if (!open) setDeleteError(null);
+        }}
+        title="Delete task?"
+        description={`This permanently deletes "${task.title}" and related reminders. This cannot be undone.`}
+        actionLabel="Delete task"
+        pending={deletePending}
+        error={deleteError}
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }

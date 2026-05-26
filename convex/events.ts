@@ -14,6 +14,10 @@ import {
   requireHouseholdMember,
   requireHouseholdRole,
 } from "./lib/permissions";
+import {
+  deleteLinkedReminders,
+  deleteTaggingsForEntity,
+} from "./lib/deleteCleanup";
 import { eventStatusValidator } from "./lib/validators";
 
 type EventStatus = Doc<"events">["status"];
@@ -310,6 +314,8 @@ export const remove = mutation({
     const event = await requireEventInHousehold(ctx, args.householdId, args.eventId);
     await canRemoveEvent(ctx, args.householdId, event, user._id);
 
+    await deleteLinkedReminders(ctx, args.householdId, "event", args.eventId);
+    await deleteTaggingsForEntity(ctx, args.householdId, ENTITY_TYPES.event, args.eventId);
     await ctx.db.delete(args.eventId);
 
     await writeActivityEvent(ctx, {

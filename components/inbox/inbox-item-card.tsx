@@ -8,6 +8,7 @@ import {
   Clock,
   FileText,
   ReceiptText,
+  Trash2,
   X,
 } from "lucide-react";
 import { motion } from "framer-motion";
@@ -57,6 +58,7 @@ export function InboxItemCard({
   onMarkPaid,
   onDismissReminder,
   onCancelReminder,
+  onDeleteReminder,
   onEditReminder,
 }: {
   item: InboxItem;
@@ -65,6 +67,7 @@ export function InboxItemCard({
   onMarkPaid?: (billId: Id<"bills">) => void;
   onDismissReminder?: (reminderId: Id<"reminders">) => void;
   onCancelReminder?: (reminderId: Id<"reminders">) => void;
+  onDeleteReminder?: (item: InboxItem) => void;
   onEditReminder?: (item: InboxItem) => void;
 }) {
   const Icon = iconByKind[item.kind];
@@ -178,6 +181,16 @@ export function InboxItemCard({
               aria-label="Cancel reminder"
             >
               <X className="size-4" />
+            </Button>
+          )}
+          {item.kind === "reminder" && item.reminderId && onDeleteReminder && (
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={() => onDeleteReminder(item)}
+            >
+              <Trash2 className="size-4" />
+              Delete
             </Button>
           )}
           <Button size="sm" asChild>

@@ -49,6 +49,7 @@ export const ACTIVITY_ACTIONS = {
   reminderUpdated: "reminder.updated",
   reminderDismissed: "reminder.dismissed",
   reminderCancelled: "reminder.cancelled",
+  reminderDeleted: "reminder.deleted",
 } as const;
 
 export const EXPENSE_CATEGORIES = [

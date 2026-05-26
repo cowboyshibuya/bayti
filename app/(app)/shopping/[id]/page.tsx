@@ -4,11 +4,13 @@ import { use, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { ArrowLeft, CheckCircle2, Trash2 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 
 import { Doc, Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
 import { LoadingState } from "@/components/shared/loading-state";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { ShoppingItemInlineForm } from "@/components/shopping/shopping-forms";
 import { ShoppingItemRow } from "@/components/shopping/shopping-cards";
 import { Button } from "@/components/ui/button";
@@ -20,15 +22,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { SHOPPING_LIST_STATUSES } from "@/lib/constants";
-import { toTitleLabel } from "@/lib/formatters";
 import { useHousehold } from "@/lib/household-context";
 
 export default function ShoppingListDetailPage({
@@ -37,6 +30,7 @@ export default function ShoppingListDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const router = useRouter();
   const { household } = useHousehold();
   const householdId = household?._id;
   const data = useQuery(
@@ -50,6 +44,11 @@ export default function ShoppingListDetailPage({
   const updateList = useMutation(api.shopping.updateList);
   const deleteList = useMutation(api.shopping.deleteList);
   const [showChecked, setShowChecked] = useState(true);
+  const [itemToDelete, setItemToDelete] = useState<Doc<"shoppingItems"> | null>(null);
+  const [clearCompletedOpen, setClearCompletedOpen] = useState(false);
+  const [deleteListOpen, setDeleteListOpen] = useState(false);
+  const [deletePending, setDeletePending] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   if (!householdId || data === undefined) {
     return <LoadingState label="Loading list" />;
@@ -77,19 +76,74 @@ export default function ShoppingListDetailPage({
     });
   }
 
-  async function handleDeleteItem(item: Doc<"shoppingItems">) {
-    await deleteItem({
-      householdId: currentHouseholdId,
-      listId: list._id,
-      itemId: item._id,
-    });
+  async function handleDeleteItem() {
+    if (!itemToDelete) return;
+
+    setDeletePending(true);
+    setDeleteError(null);
+
+    try {
+      await deleteItem({
+        householdId: currentHouseholdId,
+        listId: list._id,
+        itemId: itemToDelete._id,
+      });
+      setItemToDelete(null);
+    } catch (caught) {
+      setDeleteError(caught instanceof Error ? caught.message : "Could not delete item.");
+    } finally {
+      setDeletePending(false);
+    }
   }
 
   async function handleClearCompleted() {
-    await clearCompleted({
-      householdId: currentHouseholdId,
-      listId: list._id,
-    });
+    setDeletePending(true);
+    setDeleteError(null);
+
+    try {
+      await clearCompleted({
+        householdId: currentHouseholdId,
+        listId: list._id,
+      });
+      setClearCompletedOpen(false);
+    } catch (caught) {
+      setDeleteError(caught instanceof Error ? caught.message : "Could not clear completed items.");
+    } finally {
+      setDeletePending(false);
+    }
+  }
+
+  async function handleDeleteList() {
+    setDeletePending(true);
+    setDeleteError(null);
+
+    try {
+      await deleteList({
+        householdId: currentHouseholdId,
+        listId: list._id,
+      });
+      setDeleteListOpen(false);
+      router.push("/shopping");
+    } catch (caught) {
+      setDeleteError(caught instanceof Error ? caught.message : "Could not delete list.");
+    } finally {
+      setDeletePending(false);
+    }
+  }
+
+  function requestDeleteItem(item: Doc<"shoppingItems">) {
+    setDeleteError(null);
+    setItemToDelete(item);
+  }
+
+  function requestClearCompleted() {
+    setDeleteError(null);
+    setClearCompletedOpen(true);
+  }
+
+  function requestDeleteList() {
+    setDeleteError(null);
+    setDeleteListOpen(true);
   }
 
   async function handleArchive() {
@@ -97,13 +151,6 @@ export default function ShoppingListDetailPage({
       householdId: currentHouseholdId,
       listId: list._id,
       status: "archived",
-    });
-  }
-
-  async function handleDeleteList() {
-    await deleteList({
-      householdId: currentHouseholdId,
-      listId: list._id,
     });
   }
 
@@ -125,7 +172,7 @@ export default function ShoppingListDetailPage({
         </div>
         <div className="flex items-center gap-2">
           {checkedItems.length > 0 && (
-            <Button variant="outline" size="sm" onClick={handleClearCompleted}>
+            <Button variant="outline" size="sm" onClick={requestClearCompleted}>
               <Trash2 className="size-3.5" />
               Clear completed
             </Button>
@@ -147,7 +194,7 @@ export default function ShoppingListDetailPage({
                 <Button variant="outline" onClick={handleArchive}>
                   Archive list
                 </Button>
-                <Button variant="destructive" onClick={handleDeleteList}>
+                <Button variant="destructive" onClick={requestDeleteList}>
                   Delete list
                 </Button>
               </div>
@@ -167,7 +214,7 @@ export default function ShoppingListDetailPage({
               key={item._id}
               item={item}
               onToggle={handleToggleItem}
-              onDelete={handleDeleteItem}
+              onDelete={requestDeleteItem}
             />
           ))}
         </AnimatePresence>
@@ -194,13 +241,58 @@ export default function ShoppingListDetailPage({
                   key={item._id}
                   item={item}
                   onToggle={handleToggleItem}
-                  onDelete={handleDeleteItem}
+                  onDelete={requestDeleteItem}
                 />
               ))}
             </motion.div>
           )}
         </div>
       )}
+      <ConfirmDialog
+        open={Boolean(itemToDelete)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setItemToDelete(null);
+            setDeleteError(null);
+          }
+        }}
+        title="Delete shopping item?"
+        description={
+          itemToDelete
+            ? `This permanently deletes "${itemToDelete.name}" from this list. This cannot be undone.`
+            : "This permanently deletes the shopping item."
+        }
+        actionLabel="Delete item"
+        pending={deletePending}
+        error={itemToDelete ? deleteError : null}
+        onConfirm={handleDeleteItem}
+      />
+      <ConfirmDialog
+        open={clearCompletedOpen}
+        onOpenChange={(open) => {
+          setClearCompletedOpen(open);
+          if (!open) setDeleteError(null);
+        }}
+        title="Clear completed items?"
+        description={`This permanently deletes ${checkedItems.length} completed item${checkedItems.length === 1 ? "" : "s"} from this list. This cannot be undone.`}
+        actionLabel="Clear completed"
+        pending={deletePending}
+        error={clearCompletedOpen ? deleteError : null}
+        onConfirm={handleClearCompleted}
+      />
+      <ConfirmDialog
+        open={deleteListOpen}
+        onOpenChange={(open) => {
+          setDeleteListOpen(open);
+          if (!open) setDeleteError(null);
+        }}
+        title="Delete shopping list?"
+        description={`This permanently deletes "${list.name}" and all of its items. This cannot be undone.`}
+        actionLabel="Delete list"
+        pending={deletePending}
+        error={deleteListOpen ? deleteError : null}
+        onConfirm={handleDeleteList}
+      />
     </div>
   );
 }

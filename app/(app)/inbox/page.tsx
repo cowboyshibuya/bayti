@@ -15,6 +15,7 @@ import {
 } from "@/components/reminders/reminder-form";
 import { EmptyState } from "@/components/shared/empty-state";
 import { LoadingState } from "@/components/shared/loading-state";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -42,6 +43,9 @@ export default function InboxPage() {
   const [view, setView] = useState<InboxView>("all");
   const [createOpen, setCreateOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InboxItem | null>(null);
+  const [reminderToDelete, setReminderToDelete] = useState<InboxItem | null>(null);
+  const [deletePending, setDeletePending] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const { household } = useHousehold();
   const householdId = household?._id;
   const members = useQuery(
@@ -56,6 +60,7 @@ export default function InboxPage() {
   const updateReminder = useMutation(api.reminders.update);
   const dismissReminder = useMutation(api.reminders.dismiss);
   const cancelReminder = useMutation(api.reminders.cancel);
+  const removeReminder = useMutation(api.reminders.remove);
   const markTaskDone = useMutation(api.tasks.markDone);
   const markBillPaid = useMutation(api.bills.markPaid);
 
@@ -90,6 +95,25 @@ export default function InboxPage() {
       targetUserId: values.targetUserId ?? null,
     });
     setEditingItem(null);
+  }
+
+  async function handleDeleteReminder() {
+    if (!reminderToDelete?.reminderId) return;
+
+    setDeletePending(true);
+    setDeleteError(null);
+
+    try {
+      await removeReminder({
+        householdId: currentHouseholdId,
+        reminderId: reminderToDelete.reminderId,
+      });
+      setReminderToDelete(null);
+    } catch (caught) {
+      setDeleteError(caught instanceof Error ? caught.message : "Could not delete reminder.");
+    } finally {
+      setDeletePending(false);
+    }
   }
 
   return (
@@ -167,6 +191,10 @@ export default function InboxPage() {
               onCancelReminder={(reminderId) =>
                 void cancelReminder({ householdId, reminderId })
               }
+              onDeleteReminder={(item) => {
+                setDeleteError(null);
+                setReminderToDelete(item);
+              }}
               onEditReminder={setEditingItem}
             />
           ))
@@ -199,6 +227,25 @@ export default function InboxPage() {
           )}
         </DialogContent>
       </Dialog>
+      <ConfirmDialog
+        open={Boolean(reminderToDelete)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setReminderToDelete(null);
+            setDeleteError(null);
+          }
+        }}
+        title="Delete reminder?"
+        description={
+          reminderToDelete
+            ? `This permanently deletes "${reminderToDelete.title}". This cannot be undone.`
+            : "This permanently deletes the reminder."
+        }
+        actionLabel="Delete reminder"
+        pending={deletePending}
+        error={deleteError}
+        onConfirm={handleDeleteReminder}
+      />
     </div>
   );
 }

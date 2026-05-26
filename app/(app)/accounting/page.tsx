@@ -8,6 +8,7 @@ import { Plus } from "lucide-react";
 import { Doc, Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
 import { LoadingState } from "@/components/shared/loading-state";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { BillForm, type BillFormSubmitValues } from "@/components/bills/bill-form";
 import { BillList } from "@/components/bills/bill-list";
 import {
@@ -64,6 +65,9 @@ export default function AccountingPage() {
   const [expenseView, setExpenseView] = useState<ExpenseView>("this_month");
   const [reportYear, setReportYear] = useState(new Date().getFullYear());
   const [reportMonth, setReportMonth] = useState(new Date().getMonth());
+  const [expenseToDelete, setExpenseToDelete] = useState<Doc<"expenses"> | null>(null);
+  const [deletePending, setDeletePending] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const { household } = useHousehold();
   const householdId = household?._id;
@@ -130,6 +134,25 @@ export default function AccountingPage() {
       notes: values.notes,
       paidByUserId: values.paidByUserId,
     });
+  }
+
+  async function handleDeleteExpense() {
+    if (!expenseToDelete) return;
+
+    setDeletePending(true);
+    setDeleteError(null);
+
+    try {
+      await removeExpense({
+        householdId: currentHouseholdId,
+        expenseId: expenseToDelete._id,
+      });
+      setExpenseToDelete(null);
+    } catch (caught) {
+      setDeleteError(caught instanceof Error ? caught.message : "Could not delete expense.");
+    } finally {
+      setDeletePending(false);
+    }
   }
 
   return (
@@ -311,9 +334,7 @@ export default function AccountingPage() {
               <ExpensesViewPanel
                 view={expenseView}
                 householdId={currentHouseholdId}
-                onRemove={(expense) =>
-                  removeExpense({ householdId: currentHouseholdId, expenseId: expense._id })
-                }
+                onRemove={setExpenseToDelete}
               />
             </motion.div>
           </TabsContent>
@@ -466,6 +487,25 @@ export default function AccountingPage() {
           </TabsContent>
         </AnimatePresence>
       </Tabs>
+      <ConfirmDialog
+        open={Boolean(expenseToDelete)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setExpenseToDelete(null);
+            setDeleteError(null);
+          }
+        }}
+        title="Delete expense?"
+        description={
+          expenseToDelete
+            ? `This permanently deletes "${expenseToDelete.title}" from household accounting. This cannot be undone.`
+            : "This permanently deletes the expense."
+        }
+        actionLabel="Delete expense"
+        pending={deletePending}
+        error={deleteError}
+        onConfirm={handleDeleteExpense}
+      />
     </div>
   );
 }
