@@ -12,5 +12,8 @@
   },
   "images": {
     "binding": "IMAGES"
+  },
+  "vars": {
+    "NEXT_PUBLIC_CONVEX_URL": "https://vivid-wildebeest-480.eu-west-1.convex.cloud"
   }
 }

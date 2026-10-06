@@ -22,6 +22,7 @@ import type * as http from "../http.js";
 import type * as inbox from "../inbox.js";
 import type * as lib_activity from "../lib/activity.js";
 import type * as lib_constants from "../lib/constants.js";
+import type * as lib_deleteCleanup from "../lib/deleteCleanup.js";
 import type * as lib_permissions from "../lib/permissions.js";
 import type * as lib_users from "../lib/users.js";
 import type * as lib_validators from "../lib/validators.js";
@@ -53,6 +54,7 @@ declare const fullApi: ApiFromModules<{
   inbox: typeof inbox;
   "lib/activity": typeof lib_activity;
   "lib/constants": typeof lib_constants;
+  "lib/deleteCleanup": typeof lib_deleteCleanup;
   "lib/permissions": typeof lib_permissions;
   "lib/users": typeof lib_users;
   "lib/validators": typeof lib_validators;

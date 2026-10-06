@@ -23,7 +23,7 @@ import { householdOnboardingSchema, inviteCodeSchema } from "@/lib/validations";
 
 type DialogMode = "create" | "join" | null;
 
-export function HouseholdSwitcher() {
+export function HouseholdSwitcher({ className, onNavigate }: { className?: string; onNavigate?: () => void }) {
   const router = useRouter();
   const createHousehold = useMutation(api.households.createHousehold);
   const joinHousehold = useMutation(api.households.joinHousehold);
@@ -78,6 +78,7 @@ export function HouseholdSwitcher() {
     setActiveHouseholdId(householdId);
     setMenuOpen(false);
     router.replace("/dashboard");
+    onNavigate?.();
   }
 
   function openDialog(mode: Exclude<DialogMode, null>) {
@@ -115,6 +116,7 @@ export function HouseholdSwitcher() {
       setHouseholdName("");
       setDialogMode(null);
       router.replace("/dashboard");
+      onNavigate?.();
     } catch (caught) {
       setError(
         caught instanceof Error ? caught.message : "Could not create household.",
@@ -145,6 +147,7 @@ export function HouseholdSwitcher() {
       setInviteCode("");
       setDialogMode(null);
       router.replace("/dashboard");
+      onNavigate?.();
     } catch (caught) {
       setError(
         caught instanceof Error ? caught.message : "Could not join household.",
@@ -168,7 +171,7 @@ export function HouseholdSwitcher() {
             aria-haspopup="menu"
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen((open) => !open)}
-            className="h-10 max-w-[220px] justify-start gap-2 rounded-2xl px-2 sm:max-w-[280px]"
+            className={cn("h-10 max-w-[220px] justify-start gap-2 rounded-2xl px-2 sm:max-w-[280px]", className)}
           >
             <span className="flex size-8 shrink-0 items-center justify-center rounded-2xl bg-muted text-foreground">
               <Home className="size-4" />
@@ -187,7 +190,7 @@ export function HouseholdSwitcher() {
         {menuOpen && (
           <div
             role="menu"
-            className="absolute left-0 top-full z-50 mt-2 flex w-72 flex-col gap-1 rounded-2xl bg-popover p-1 text-sm text-popover-foreground ring-1 ring-foreground/10 [box-shadow:var(--shadow-elevated)] animate-in fade-in-0 zoom-in-95 slide-in-from-top-1"
+            className="absolute left-0 top-full z-50 mt-2 flex w-72 max-w-[calc(100vw-2rem)] flex-col gap-1 rounded-2xl bg-popover p-1 text-sm text-popover-foreground ring-1 ring-foreground/10 [box-shadow:var(--shadow-elevated)] animate-in fade-in-0 zoom-in-95 slide-in-from-top-1"
           >
             <p className="px-1.5 py-1 text-xs font-medium text-muted-foreground">
               Households

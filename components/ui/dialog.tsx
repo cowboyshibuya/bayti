@@ -79,8 +79,9 @@ function DialogContent({
   return (
     <DialogPortal>
       <AnimatePresence>
-        <DialogOverlay />
+        <DialogOverlay key="dialog-overlay" />
         <motion.div
+          key="dialog-content"
           variants={contentVariants}
           initial="hidden"
           animate="visible"

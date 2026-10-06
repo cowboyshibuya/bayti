@@ -17,6 +17,7 @@ import {
 
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { ThemePreference } from "@/components/settings/theme-preference";
 import { EmptyState } from "@/components/shared/empty-state";
 import { LoadingState } from "@/components/shared/loading-state";
 import { MemberDisplay } from "@/components/shared/member-display";
@@ -70,6 +71,15 @@ export default function SettingsPage() {
       </div>
 
       <div className="mt-6 grid gap-6">
+        <Card className="rounded-2xl">
+          <CardHeader>
+            <CardTitle className="text-sm">Preferences</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ThemePreference />
+          </CardContent>
+        </Card>
+
         {household && onboardingState.membership && (
           <Card className="rounded-2xl">
             <CardHeader>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
 import { Plus } from "lucide-react";
 
@@ -36,7 +37,8 @@ type CreateMode =
   | "reminder"
   | null;
 
-export function QuickCreateDialog() {
+export function QuickCreateDialog({ iconOnly = false }: { iconOnly?: boolean }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<CreateMode>(null);
   const { household } = useHousehold();
@@ -151,16 +153,21 @@ export function QuickCreateDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>
+        <Button
+          size={iconOnly ? "icon" : "default"}
+          className={iconOnly ? "size-10" : undefined}
+          aria-label={iconOnly ? "Quick actions" : undefined}
+          title={iconOnly ? "Quick actions" : undefined}
+        >
           <Plus className="size-4" />
-          Quick create
+          {!iconOnly && "Quick create"}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-h-[90svh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Quick create</DialogTitle>
+          <DialogTitle>Quick actions</DialogTitle>
           <DialogDescription>
-            Choose what you want to create.
+            Create something or ask Stella for help.
           </DialogDescription>
         </DialogHeader>
 
@@ -174,14 +181,20 @@ export function QuickCreateDialog() {
                 item.label === "Shopping" ||
                 item.label === "Expense" ||
                 item.label === "Document" ||
-                item.label === "Reminder";
+                item.label === "Reminder" ||
+                item.label === "Ask Stella";
               return (
                 <button
                   key={item.label}
                   disabled={!enabled}
-                  onClick={() =>
-                    enabled && setMode(item.label.toLowerCase() as CreateMode)
-                  }
+                  onClick={() => {
+                    if (item.label === "Ask Stella") {
+                      setOpen(false);
+                      router.push("/stella");
+                    } else if (enabled) {
+                      setMode(item.label.toLowerCase() as CreateMode);
+                    }
+                  }}
                   className="flex items-center gap-3 rounded-2xl border border-border bg-card/80 p-3 text-left text-sm transition-colors hover:border-foreground/14 hover:bg-muted/45 disabled:cursor-not-allowed disabled:opacity-45 dark:bg-white/[0.04] dark:hover:border-white/[0.13] dark:hover:bg-white/[0.06]"
                 >
                   <span className="flex size-9 items-center justify-center rounded-2xl bg-muted dark:bg-white/[0.06]">
@@ -190,7 +203,7 @@ export function QuickCreateDialog() {
                   <span>
                     <span className="block font-semibold text-foreground/88">{item.label}</span>
                     <span className="text-xs text-foreground/42">
-                      {enabled ? "Click to create" : "Available in a later milestone"}
+                      {item.label === "Ask Stella" ? "Start a conversation" : enabled ? "Click to create" : "Available in a later milestone"}
                     </span>
                   </span>
                 </button>

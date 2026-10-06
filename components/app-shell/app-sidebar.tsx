@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
-import { Home } from "lucide-react";
+import { AccountMenu } from "@/components/app-shell/account-menu";
+import { HouseholdSwitcher } from "@/components/app-shell/household-switcher";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useHousehold } from "@/lib/household-context";
@@ -11,7 +12,7 @@ import { useHousehold } from "@/lib/household-context";
 import { APP_NAVIGATION } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 
-export function AppSidebar() {
+export function AppSidebar({ mobile = false, onNavigate }: { mobile?: boolean; onNavigate?: () => void }) {
   const pathname = usePathname();
   const { household } = useHousehold();
   const inboxCount = useQuery(
@@ -20,15 +21,12 @@ export function AppSidebar() {
   );
 
   return (
-    <div className="flex h-full min-h-svh flex-col p-3">
-      <Link href="/" className="flex items-center gap-2 rounded-2xl px-3 py-3 text-foreground/88">
-        <span className="flex size-8 items-center justify-center rounded-2xl bg-muted text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
-          <Home className="size-4" />
-        </span>
-        <span className="font-heading text-base font-semibold tracking-normal">Bayti</span>
-      </Link>
+    <div className={cn("flex min-h-0 flex-col p-3", mobile ? "h-full" : "sticky top-0 h-svh")}>
+      <div className={cn("shrink-0", mobile && "pr-9")}>
+        <HouseholdSwitcher className="w-full max-w-none sm:max-w-none" onNavigate={onNavigate} />
+      </div>
 
-      <nav className="mt-5 grid gap-1">
+      <nav aria-label="Main navigation" className="mt-5 grid min-h-0 flex-1 content-start gap-1 overflow-y-auto">
         {APP_NAVIGATION.map((item) => {
           const isActive =
             pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -37,6 +35,7 @@ export function AppSidebar() {
             <Link
               key={item.href}
               href={item.href}
+              onClick={onNavigate}
               className={cn(
                 "relative flex h-10 items-center gap-3 rounded-2xl px-3 text-sm transition-colors",
                 isActive
@@ -46,7 +45,7 @@ export function AppSidebar() {
             >
               {isActive && (
                 <motion.div
-                  layoutId="sidebar-active"
+                  layoutId={mobile ? "mobile-sidebar-active" : "sidebar-active"}
                   className="absolute inset-0 rounded-2xl border border-border bg-card shadow-[0_10px_26px_rgba(25,25,25,0.06)] dark:bg-white/[0.08] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.055)]"
                   transition={{ type: "spring", stiffness: 400, damping: 30 }}
                 />
@@ -62,6 +61,9 @@ export function AppSidebar() {
           );
         })}
       </nav>
+      <footer className="mt-3 shrink-0 border-t border-sidebar-border pt-3 pb-[env(safe-area-inset-bottom)]">
+        <AccountMenu expanded onNavigate={onNavigate} />
+      </footer>
     </div>
   );
 }

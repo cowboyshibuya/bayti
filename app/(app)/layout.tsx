@@ -4,7 +4,6 @@ import { ReactNode, useEffect } from "react";
 import { useMutation } from "convex/react";
 import { usePathname, useRouter } from "next/navigation";
 import { useConvexAuth } from "@convex-dev/auth/react";
-import { AnimatePresence, motion } from "framer-motion";
 
 import { api } from "@/convex/_generated/api";
 import { AppHeader } from "@/components/app-shell/app-header";
@@ -12,12 +11,6 @@ import { AppSidebar } from "@/components/app-shell/app-sidebar";
 import { MobileNav } from "@/components/app-shell/mobile-nav";
 import { LoadingState } from "@/components/shared/loading-state";
 import { HouseholdProvider, useHousehold } from "@/lib/household-context";
-
-const pageVariants = {
-  initial: { opacity: 0, y: 6 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -6 },
-};
 
 function hasUsableDisplayName(name: string | undefined) {
   const length = name?.trim().length ?? 0;
@@ -37,12 +30,17 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     void syncCurrentUser({});
   }, [isLoading, isAuthenticated, syncCurrentUser]);
 
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.replace("/login");
+    }
+  }, [isLoading, isAuthenticated, router]);
+
   if (isLoading) {
     return <LoadingState label="Preparing Bayti" />;
   }
 
   if (!isAuthenticated) {
-    router.replace("/login");
     return <LoadingState label="Preparing Bayti" />;
   }
 
@@ -137,18 +135,7 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
         <section className="min-w-0 bg-background">
           <AppHeader />
           <div className="pb-24 lg:pb-0">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={pathname}
-                variants={pageVariants}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
-              >
-                {children}
-              </motion.div>
-            </AnimatePresence>
+            {children}
           </div>
           <MobileNav />
         </section>

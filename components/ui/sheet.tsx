@@ -98,24 +98,25 @@ function SheetContent({
   return (
     <SheetPortal>
       <AnimatePresence>
-        <SheetOverlay />
-        <motion.div
-          variants={sheetContentVariants[side]}
-          initial="hidden"
-          animate="visible"
-          exit="hidden"
-          transition={{ type: "spring", stiffness: 350, damping: 32 }}
-          className="fixed z-50"
+        <SheetOverlay key="sheet-overlay" />
+        <SheetPrimitive.Content
+          key="sheet-content"
+          data-slot="sheet-content"
+          data-side={side}
+          className={cn(
+            "fixed z-50 flex min-h-0 flex-col gap-4 border-border bg-popover/95 bg-clip-padding text-sm text-popover-foreground shadow-[0_28px_80px_rgba(25,25,25,0.16)] backdrop-blur-2xl dark:shadow-[0_28px_80px_rgba(0,0,0,0.42)]",
+            sideClass[side],
+            className
+          )}
+          {...props}
+          asChild
         >
-          <SheetPrimitive.Content
-            data-slot="sheet-content"
-            data-side={side}
-            className={cn(
-              "flex flex-col gap-4 border-border bg-popover/95 bg-clip-padding text-sm text-popover-foreground shadow-[0_28px_80px_rgba(25,25,25,0.16)] backdrop-blur-2xl dark:shadow-[0_28px_80px_rgba(0,0,0,0.42)]",
-              sideClass[side],
-              className
-            )}
-            {...props}
+          <motion.div
+            variants={sheetContentVariants[side]}
+            initial="hidden"
+            animate="visible"
+            exit="hidden"
+            transition={{ type: "spring", stiffness: 350, damping: 32 }}
           >
             {children}
             {showCloseButton && (
@@ -130,8 +131,8 @@ function SheetContent({
                 </Button>
               </SheetPrimitive.Close>
             )}
-          </SheetPrimitive.Content>
-        </motion.div>
+          </motion.div>
+        </SheetPrimitive.Content>
       </AnimatePresence>
     </SheetPortal>
   )

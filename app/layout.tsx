@@ -5,7 +5,6 @@ import { ConvexAuthNextjsServerProvider } from "@convex-dev/auth/nextjs/server";
 import { ConvexClientProvider } from "@/components/providers/convex-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "next-themes";
-import { SuppressNextThemesWarning } from "@/components/providers/suppress-warnings";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -31,10 +30,9 @@ export default function RootLayout({
       >
         <body className="min-h-full bg-background text-foreground flex flex-col">
           <ConvexClientProvider>
-            <SuppressNextThemesWarning />
             <ThemeProvider
               attribute={"class"}
-              defaultTheme="light"
+              defaultTheme="system"
               enableSystem
               disableTransitionOnChange
             >

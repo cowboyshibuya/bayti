@@ -111,6 +111,7 @@ export const APP_NAVIGATION = [
 ] as const;
 
 export const QUICK_CREATE_ITEMS = [
+  { label: "Ask Stella", icon: Sparkles },
   { label: "Task", icon: CheckSquare },
   { label: "Bill", icon: ReceiptText },
   { label: "Event", icon: CalendarDays },
