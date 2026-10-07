@@ -55,9 +55,12 @@ export function RecentExpensesPanel() {
         {expenseDashboard.recentExpenses.map((expense) => (
           <div
             key={expense._id}
-            className="flex items-center justify-between rounded-2xl border border-border bg-card/80 px-3 py-2 text-sm dark:bg-white/[0.04]"
+            className="relative flex items-center justify-between rounded-2xl border border-border bg-card/80 px-3 py-2 text-sm dark:bg-white/[0.04]"
           >
-            <EntityEditButton entity={{ kind: "expense", value: expense }}>
+            <EntityEditButton
+              stretch
+              entity={{ kind: "expense", value: expense }}
+            >
               <p className="truncate font-semibold text-foreground/88">
                 {expense.title}
               </p>

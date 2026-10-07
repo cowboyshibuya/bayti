@@ -49,11 +49,13 @@ export type EventFormSubmitValues = {
 export function EventForm({
   members,
   initialEvent,
+  defaultDate,
   submitLabel,
   onSubmit,
 }: {
   members: { membership: Doc<"householdMembers">; user: Doc<"users"> | null }[];
   initialEvent?: Doc<"events">;
+  defaultDate?: number;
   submitLabel: string;
   onSubmit: (values: EventFormSubmitValues) => Promise<void>;
 }) {
@@ -64,7 +66,7 @@ export function EventForm({
   );
   const [note, setNote] = useState(initialEvent?.note ?? "");
   const [date, setDate] = useState(
-    formatDateInputValue(initialEvent?.startsAt),
+    formatDateInputValue(initialEvent?.startsAt ?? defaultDate),
   );
   const [startTime, setStartTime] = useState(
     initialEvent?.startsAt && !initialEvent.isAllDay

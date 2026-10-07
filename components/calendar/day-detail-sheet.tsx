@@ -1,20 +1,8 @@
 "use client";
 
-import {
-  startOfDay,
-  endOfDay,
-} from "date-fns";
-import { CalendarDays } from "lucide-react";
-
+import { startOfDay, endOfDay } from "date-fns";
 import type { CalendarEntry } from "./types";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { formatDate } from "@/lib/dates";
+import { QuickCreateDialog } from "@/components/shared/quick-create-dialog";
 import { CalendarEntryCard } from "./calendar-entry-pill";
 
 export function DayEventDialog({
@@ -29,46 +17,38 @@ export function DayEventDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   if (!day) return null;
-
   const dayStart = startOfDay(day).getTime();
   const dayEnd = endOfDay(day).getTime();
-
-  const dayEvents = entries.filter(
-    (entry) =>
-      entry.entityType === "event" &&
-      entry.date >= dayStart &&
-      entry.date <= dayEnd,
-  );
-
+  const dayEntries = entries
+    .filter((entry) => entry.date >= dayStart && entry.date <= dayEnd)
+    .sort((a, b) => a.date - b.date || a.id.localeCompare(b.id));
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <CalendarDays className="size-4 text-muted-foreground" />
-            {formatDate(day.getTime())}
-          </DialogTitle>
-          <DialogDescription>
-            {dayEvents.length === 1
-              ? "1 event scheduled."
-              : `${dayEvents.length} events scheduled.`}
-          </DialogDescription>
-        </DialogHeader>
-        <div className="mt-4 grid gap-3">
-          {dayEvents.length === 0 && (
-            <div className="rounded-2xl border border-dashed border-border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
-              No events scheduled for this day.
-            </div>
-          )}
-          {dayEvents.map((entry) => (
+    <QuickCreateDialog
+      key={day.getTime()}
+      date={day}
+      open={open}
+      onOpenChange={onOpenChange}
+      showTrigger={false}
+    >
+      <section
+        className="mt-5 grid min-w-0 grid-cols-1 gap-3 border-t pt-4"
+        aria-label="Scheduled for this day"
+      >
+        <h3 className="text-sm font-semibold">Scheduled for this day</h3>
+        {dayEntries.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Nothing scheduled yet.
+          </p>
+        ) : (
+          dayEntries.map((entry) => (
             <CalendarEntryCard
               key={`${entry.entityType}-${entry.id}`}
               entry={entry}
-              clickBehavior="event-detail"
+              clickBehavior="entity-detail"
             />
-          ))}
-        </div>
-      </DialogContent>
-    </Dialog>
+          ))
+        )}
+      </section>
+    </QuickCreateDialog>
   );
 }

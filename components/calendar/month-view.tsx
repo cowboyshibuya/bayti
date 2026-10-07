@@ -63,13 +63,16 @@ export function MonthView({
           const isToday = isSameDay(date, today);
 
           return (
-            <motion.div
+            <motion.button
+              type="button"
+              aria-label={`Add to ${format(date, "EEEE, MMMM d, yyyy")}`}
+              aria-haspopup="dialog"
               key={date.toISOString()}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: index * 0.005 }}
               className={cn(
-                "relative min-h-[96px] cursor-pointer border-b border-r border-border p-1.5 transition-colors last:border-r-0 hover:bg-muted/45 sm:min-h-[120px] dark:hover:bg-white/[0.045]",
+                "relative flex flex-col items-stretch min-w-0 min-h-[96px] cursor-pointer text-left focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-[-2px] border-b border-r border-border p-1.5 transition-colors last:border-r-0 hover:bg-muted/45 sm:min-h-[120px] dark:hover:bg-white/[0.045]",
                 !isCurrentMonth && "bg-muted/25 dark:bg-white/[0.02]",
                 isToday && "bg-accent/8",
               )}
@@ -91,7 +94,10 @@ export function MonthView({
               </div>
               <div className="mt-1 flex flex-col gap-1">
                 {dayEntries.slice(0, 3).map((entry) => (
-                  <CalendarEntryPill key={`${entry.entityType}-${entry.id}`} entry={entry} />
+                  <CalendarEntryPill
+                    key={`${entry.entityType}-${entry.id}`}
+                    entry={entry}
+                  />
                 ))}
                 {dayEntries.length > 3 && (
                   <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium text-foreground/38 hover:bg-muted/60 dark:hover:bg-white/[0.06]">
@@ -99,7 +105,7 @@ export function MonthView({
                   </span>
                 )}
               </div>
-            </motion.div>
+            </motion.button>
           );
         })}
       </div>

@@ -58,6 +58,7 @@ export type BillFormSubmitValues = {
 export function BillForm({
   members,
   initialBill,
+  defaultDate,
   initialRecurrence,
   submitLabel,
   onSubmit,
@@ -65,6 +66,7 @@ export function BillForm({
   members: { membership: Doc<"householdMembers">; user: Doc<"users"> | null }[];
   initialBill?: Doc<"bills">;
   initialRecurrence?: Doc<"recurrenceRules"> | null;
+  defaultDate?: number;
   submitLabel: string;
   onSubmit: (values: BillFormSubmitValues) => Promise<void>;
 }) {
@@ -93,7 +95,7 @@ export function BillForm({
     initialBill?.ownerUserId ?? "unassigned",
   );
   const [dueDate, setDueDate] = useState(
-    formatDateInputValue(initialBill?.dueAt),
+    formatDateInputValue(initialBill?.dueAt ?? defaultDate),
   );
   const [autopay, setAutopay] = useState(initialBill?.autopay ?? false);
   const [recurring, setRecurring] = useState(Boolean(initialRecurrence));

@@ -3,8 +3,7 @@
 import { EntityCollection } from "@/components/shared/entity-collection";
 import { use, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
-import { ArrowLeft, CheckCircle2, Trash2 } from "lucide-react";
-import Link from "next/link";
+import { CheckCircle2, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 
@@ -14,6 +13,7 @@ import { LoadingState } from "@/components/shared/loading-state";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { ShoppingItemInlineForm } from "@/components/shopping/shopping-forms";
 import { ShoppingItemRow } from "@/components/shopping/shopping-cards";
+import { BackButton } from "@/components/shared/back-button";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -167,16 +167,14 @@ export default function ShoppingListDetailPage({
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
-      <Button variant="ghost" asChild className="-ml-2 mb-4">
-        <Link href="/shopping">
-          <ArrowLeft className="size-4" />
-          Back to shopping
-        </Link>
-      </Button>
-
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">{list.name}</h1>
+        <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 items-center gap-2">
+            <BackButton href="/shopping" label="Back to shopping" />
+            <h1 className="min-w-0 break-words text-2xl font-semibold">
+              {list.name}
+            </h1>
+          </div>
           <p className="mt-1 text-sm text-muted-foreground">
             {uncheckedItems.length} remaining · {checkedItems.length} completed
           </p>

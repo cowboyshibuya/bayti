@@ -38,12 +38,15 @@ export function EntityEditButton({
   children,
   className = "min-w-0 flex-1 text-left",
   href,
+  stretch = false,
 }: {
   entity: Entity;
   children: ReactNode;
   className?: string;
   href?: string;
+  stretch?: boolean;
 }) {
+  const actionClassName = `${className} ${stretch ? "after:absolute after:inset-0 after:rounded-xl after:content-['']" : ""}`;
   const [open, setOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deletePending, setDeletePending] = useState(false);
@@ -110,7 +113,7 @@ export function EntityEditButton({
   }
   if (!canEdit)
     return href ? (
-      <Link href={href} className={className}>
+      <Link href={href} className={actionClassName}>
         {children}
       </Link>
     ) : (
@@ -134,7 +137,7 @@ export function EntityEditButton({
         <DialogTrigger asChild>
           <button
             type="button"
-            className={`${className} rounded-lg focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-4`}
+            className={`${actionClassName} rounded-lg focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-4`}
             aria-label={`Edit ${"title" in entity.value ? entity.value.title : entity.value.name}`}
           >
             {children}

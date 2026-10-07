@@ -53,6 +53,7 @@ export type TaskFormSubmitValues = {
 export function TaskForm({
   members,
   initialTask,
+  defaultDate,
   initialRecurrence,
   submitLabel,
   onSubmit,
@@ -60,6 +61,7 @@ export function TaskForm({
   members: { membership: Doc<"householdMembers">; user: Doc<"users"> | null }[];
   initialTask?: Doc<"tasks">;
   initialRecurrence?: Doc<"recurrenceRules"> | null;
+  defaultDate?: number;
   submitLabel: string;
   onSubmit: (values: TaskFormSubmitValues) => Promise<void>;
 }) {
@@ -81,7 +83,7 @@ export function TaskForm({
     initialTask?.ownerUserId ?? "unassigned",
   );
   const [dueDate, setDueDate] = useState(
-    formatDateInputValue(initialTask?.dueAt),
+    formatDateInputValue(initialTask?.dueAt ?? defaultDate),
   );
   const [recurring, setRecurring] = useState(Boolean(initialRecurrence));
   const [frequency, setFrequency] = useState<

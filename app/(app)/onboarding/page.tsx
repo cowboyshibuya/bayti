@@ -3,16 +3,22 @@
 import { FormEvent, useState } from "react";
 import { useMutation } from "convex/react";
 import { AnimatePresence, motion } from "framer-motion";
-import {ArrowLeft,ArrowRight,Building2,KeyRound,Loader2,UsersRound} from "lucide-react";
+import {
+  ArrowRight,
+  Building2,
+  KeyRound,
+  Loader2,
+  UsersRound,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { api } from "@/convex/_generated/api";
+import { BackButton } from "@/components/shared/back-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useHousehold } from "@/lib/household-context";
 import { householdOnboardingSchema, inviteCodeSchema } from "@/lib/validations";
-import { cn } from "@/lib/utils";
 
 type OnboardingMode = "choice" | "create" | "join";
 
@@ -42,7 +48,10 @@ export default function OnboardingPage() {
   const [pending, setPending] = useState<"create" | "join" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const normalizedInviteCode = inviteCode.trim().toUpperCase().replaceAll("-", "");
+  const normalizedInviteCode = inviteCode
+    .trim()
+    .toUpperCase()
+    .replaceAll("-", "");
   const canCreate = workspaceName.trim().length >= 2;
   const canJoin = normalizedInviteCode.length === 8;
 
@@ -70,7 +79,9 @@ export default function OnboardingPage() {
       router.replace("/dashboard");
     } catch (caught) {
       setError(
-        caught instanceof Error ? caught.message : "Could not create workspace.",
+        caught instanceof Error
+          ? caught.message
+          : "Could not create workspace.",
       );
     } finally {
       setPending(null);
@@ -108,18 +119,7 @@ export default function OnboardingPage() {
   return (
     <main className="min-h-svh bg-[#fbfaf8] px-5 py-6 text-[#101014] sm:px-8 dark:bg-background dark:text-foreground">
       <div className="mx-auto flex min-h-[calc(100svh-3rem)] max-w-5xl flex-col">
-        <header className="flex h-12 items-center justify-between">
-          <button
-            type="button"
-            onClick={() => setCurrentMode("choice")}
-            className={cn(
-              "inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-semibold text-black/58 transition-colors hover:bg-black/[0.04] hover:text-black dark:text-foreground/58 dark:hover:bg-white/[0.06] dark:hover:text-foreground",
-              mode === "choice" && "pointer-events-none opacity-0",
-            )}
-          >
-            <ArrowLeft className="size-4" />
-            Back
-          </button>
+        <header className="flex h-12 items-center justify-end">
           <div className="flex items-center gap-2 rounded-full bg-black/[0.035] px-3 py-2 text-sm font-semibold text-black/70 dark:bg-white/[0.06] dark:text-foreground/70">
             <span className="flex size-6 items-center justify-center rounded-full bg-black text-white dark:bg-primary dark:text-primary-foreground">
               F
@@ -176,17 +176,29 @@ export default function OnboardingPage() {
                 className="w-full max-w-md text-center"
               >
                 <InviteIllustration />
-                <h1 className="mt-8 text-3xl font-semibold tracking-normal">
-                  Enter Invite Code
-                </h1>
+                <div className="mt-8 flex items-center justify-center gap-2">
+                  <BackButton
+                    onClick={() => setCurrentMode("choice")}
+                    disabled={pending !== null}
+                  />
+                  <h1 className="min-w-0 text-3xl font-semibold tracking-normal">
+                    Enter Invite Code
+                  </h1>
+                </div>
                 <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-black/54 dark:text-foreground/54">
                   Only invited users can access this workspace. Enter your code
                   to continue.
                 </p>
 
-                <form onSubmit={handleJoin} className="mt-9 grid gap-4 text-left">
+                <form
+                  onSubmit={handleJoin}
+                  className="mt-9 grid gap-4 text-left"
+                >
                   <div className="grid gap-2">
-                    <Label htmlFor="inviteCode" className="text-xs text-black/74 dark:text-foreground/74">
+                    <Label
+                      htmlFor="inviteCode"
+                      className="text-xs text-black/74 dark:text-foreground/74"
+                    >
                       Enter code
                     </Label>
                     <Input
@@ -228,14 +240,23 @@ export default function OnboardingPage() {
                 className="w-full max-w-md text-center"
               >
                 <CreateIllustration />
-                <h1 className="mt-8 text-3xl font-semibold tracking-normal">
-                  Create Workspace
-                </h1>
+                <div className="mt-8 flex items-center justify-center gap-2">
+                  <BackButton
+                    onClick={() => setCurrentMode("choice")}
+                    disabled={pending !== null}
+                  />
+                  <h1 className="min-w-0 text-3xl font-semibold tracking-normal">
+                    Create Workspace
+                  </h1>
+                </div>
                 <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-black/54 dark:text-foreground/54">
                   Name your workspace. You can invite other members after setup.
                 </p>
 
-                <form onSubmit={handleCreate} className="mt-9 grid gap-4 text-left">
+                <form
+                  onSubmit={handleCreate}
+                  className="mt-9 grid gap-4 text-left"
+                >
                   <div className="grid gap-2">
                     <Label
                       htmlFor="workspaceName"

@@ -98,7 +98,11 @@ export default function CalendarPage() {
           />
         )}
         {view === "day" && (
-          <DayView currentDate={currentDate} entries={entries} />
+          <DayView
+            currentDate={currentDate}
+            entries={entries}
+            onSelectDay={handleSelectDay}
+          />
         )}
       </div>
 

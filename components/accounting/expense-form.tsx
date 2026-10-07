@@ -46,11 +46,13 @@ export type ExpenseFormSubmitValues = {
 export function ExpenseForm({
   members,
   initialExpense,
+  defaultDate,
   submitLabel,
   onSubmit,
 }: {
   members: { membership: Doc<"householdMembers">; user: Doc<"users"> | null }[];
   initialExpense?: Doc<"expenses">;
+  defaultDate?: number;
   submitLabel: string;
   onSubmit: (values: ExpenseFormSubmitValues) => Promise<void>;
 }) {
@@ -64,9 +66,7 @@ export function ExpenseForm({
   const currency =
     initialExpense?.currency ?? household?.currency ?? DEFAULT_CURRENCY;
   const [spentDate, setSpentDate] = useState(() =>
-    initialExpense?.spentAt
-      ? formatDateInputValue(initialExpense.spentAt)
-      : formatDateInputValue(Date.now()),
+    formatDateInputValue(initialExpense?.spentAt ?? defaultDate ?? Date.now()),
   );
   const [category, setCategory] = useState<ExpenseCategory>(
     (initialExpense?.category as ExpenseCategory) ?? "Groceries",

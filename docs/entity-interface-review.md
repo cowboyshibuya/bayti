@@ -74,3 +74,25 @@ Settings Preferences now stores an admin-managed workspace currency, with EUR as
 Expense rows now place their title, amount, metadata, and padding inside one native editor button. Remove is a separate sibling action. The row no longer moves during a layout animation, avoiding a moving click target.
 
 Verification: 10 backend tests passed, including preference authorization/validation, defaults for all three operation types, and currency preservation on edits. Browser checks with mocked responses verified preference success/failure and accessibility, automatic USD expense creation, absent currency inputs, preserved existing currencies, first-click activation across four row regions at four widths, and separate removal behavior. Responsive/theme modal checks and expanded-form accessibility scans passed. Frontend/Convex type checks, native Next.js and Cloudflare builds passed; lint has no errors and 11 existing warnings.
+
+## Follow-up: calendar day creation menu
+
+Month and week slots now use native buttons to open a date-specific creation menu. Day view exposes the same action and a clickable empty slot. The menu offers Event, Expense, Bill, Task, Reminder, and Shopping list; dated forms receive the chosen local date, and reminders start at 09:00 on that day. Existing scheduled events, tasks, and bills remain available through separate detail actions. Permissions still govern creation.
+
+The existing quick-create dialog and forms are reused rather than duplicating operation forms. Menus reset on closing; Back confirms before discarding changes and cannot abandon a pending save. Forms receive focus when selected, and closing restores focus to the calendar slot. Mobile week columns use compact entry pills, and shrinkable grid tracks and wrapping titles prevent long-content overflow. Calendar navigation controls have accessible names.
+
+Verification with isolated mocked responses: all six creation flows; correct submitted dates in America/New_York; keyboard slot opening and focus restoration; 12 menu/view checks across 320, 390, 768, and 1280px widths; populated views with long content; discarded-change rejection; viewer restrictions; menu axe checks. Frontend type checks, lint (11 existing warnings), native Next.js build, and Cloudflare build passed. Production persistence and deployment were not exercised.
+
+## Follow-up: title-aligned back navigation
+
+All existing modal/view back actions now use a shared 44px chevron-only BackButton immediately before the title. DialogHeader exposes an onBack property that automatically guards changed and pending forms. The quick-create dialog removes its separate Back row, returning keyboard focus to the creation menu after navigating back. Bill, task, event, shopping, and onboarding titles use the same shared control; links retain destination-specific accessible names. The rule is documented in the project AGENTS.md for future work.
+
+Browser verification covered eight responsive/theme modal layouts, alignment immediately before the title, accessible names, touch-target size, light/dark axe scans, menu focus restoration, rejected discard confirmation, and pending-save protection. Frontend type checking, lint (11 existing warnings), native Next.js build, and Cloudflare build passed. No deployment was performed.
+
+## Follow-up: reliable row actions
+
+Shopping list rows now use a native link across their main content, icon, progress bar, and visible padding to open the list. A separate Edit button opens the list editor; viewers see the navigation link without editing controls. This follows the clarified expectation that clicking a shopping list opens its contents.
+
+Bill, task, event, shopping-item, and dashboard expense rows expand their native main control across the row's content area. Independent links, payment/completion/cancellation controls, checkboxes, and deletion buttons remain separate siblings above that target. Row layout/entrance movement and the shared tab-content sliding wrapper were removed to keep targets fixed. No generic click handler was added to non-interactive row containers.
+
+Browser checks with mocked query responses passed 16 first-click shopping navigations and 32 first-click editor regions at four widths, separate editing/detail navigation, keyboard and viewer navigation, and independent Pay/Done/Cancel/checkbox/Delete actions on mobile and desktop. Existing chevron-back layout, accessibility, discard, and saving checks also passed. Frontend type checking, lint (11 existing warnings), native Next.js build, Cloudflare build, and diff whitespace checks passed. Production navigation and deployment were not exercised.

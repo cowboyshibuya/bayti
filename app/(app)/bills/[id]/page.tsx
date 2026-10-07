@@ -3,14 +3,12 @@
 import { use, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import {
-  ArrowLeft,
   CalendarClock,
   CreditCard,
   ReceiptText,
   Repeat,
   Trash2,
 } from "lucide-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { Doc, Id } from "@/convex/_generated/dataModel";
@@ -28,6 +26,7 @@ import {
 } from "@/components/bills/bill-form";
 import { BillStatusBadge } from "@/components/bills/bill-status-badge";
 import { BillPriorityBadge } from "@/components/bills/bill-priority-badge";
+import { BackButton } from "@/components/shared/back-button";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -145,14 +144,8 @@ export default function BillDetailPage({
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
       <div>
-        <Button variant="ghost" asChild className="-ml-2 mb-4">
-          <Link href="/bills">
-            <ArrowLeft className="size-4" />
-            Back to bills
-          </Link>
-        </Button>
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
+          <div className="min-w-0 flex-1">
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <BillStatusBadge status={bill.status} />
               <BillPriorityBadge priority={bill.priority} />
@@ -174,9 +167,12 @@ export default function BillDetailPage({
                 </span>
               )}
             </div>
-            <h1 className="text-3xl font-semibold tracking-normal">
-              {bill.title}
-            </h1>
+            <div className="flex min-w-0 items-center gap-2">
+              <BackButton href="/bills" label="Back to bills" />
+              <h1 className="min-w-0 break-words text-3xl font-semibold tracking-normal">
+                {bill.title}
+              </h1>
+            </div>
             {bill.description && (
               <p className="mt-3 max-w-2xl whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
                 {bill.description}

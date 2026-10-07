@@ -31,6 +31,7 @@ export type ReminderFormSubmitValues = {
 export function ReminderForm({
   members,
   initialReminder,
+  defaultDate,
   submitLabel,
   onSubmit,
 }: {
@@ -39,6 +40,7 @@ export function ReminderForm({
     Doc<"reminders">,
     "title" | "note" | "remindAt" | "targetUserId"
   >;
+  defaultDate?: number;
   submitLabel: string;
   onSubmit: (values: ReminderFormSubmitValues) => Promise<void>;
 }) {
@@ -47,7 +49,7 @@ export function ReminderForm({
   const [note, setNote] = useState(initialReminder?.note ?? "");
   const [remindAt, setRemindAt] = useState(() =>
     formatDateTimeInputValue(
-      initialReminder?.remindAt ?? Date.now() + 60 * 60 * 1000,
+      initialReminder?.remindAt ?? defaultDate ?? Date.now() + 60 * 60 * 1000,
     ),
   );
   const [targetUserId, setTargetUserId] = useState<string>(

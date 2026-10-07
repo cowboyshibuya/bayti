@@ -2,12 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import {
-  CalendarDays,
-  CheckSquare,
-  Clock,
-  ReceiptText,
-} from "lucide-react";
+import { CalendarDays, CheckSquare, Clock, ReceiptText } from "lucide-react";
 
 import type { CalendarEntry } from "./types";
 import { formatDate, formatEventDateTime } from "@/lib/dates";
@@ -17,8 +12,7 @@ const typeConfig = {
   task: {
     icon: CheckSquare,
     label: "Task",
-    pillClass:
-      "bg-accent/15 text-accent border-accent/20 hover:bg-accent/25",
+    pillClass: "bg-accent/15 text-accent border-accent/20 hover:bg-accent/25",
     dotClass: "bg-accent",
   },
   bill: {
@@ -48,11 +42,9 @@ export function CalendarEntryPill({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-medium transition-colors",
+        "inline-flex min-w-0 items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-medium transition-colors",
         config.pillClass,
-        entry.status === "done" || entry.status === "paid"
-          ? "opacity-60"
-          : "",
+        entry.status === "done" || entry.status === "paid" ? "opacity-60" : "",
         className,
       )}
     >
@@ -62,7 +54,7 @@ export function CalendarEntryPill({
   );
 }
 
-type CalendarEntryCardClickBehavior = "none" | "event-detail";
+type CalendarEntryCardClickBehavior = "none" | "event-detail" | "entity-detail";
 
 export function CalendarEntryCard({
   entry,
@@ -74,7 +66,9 @@ export function CalendarEntryCard({
   const config = typeConfig[entry.entityType];
   const Icon = config.icon;
   const router = useRouter();
-  const isClickable = clickBehavior === "event-detail" && entry.entityType === "event";
+  const isClickable =
+    clickBehavior === "entity-detail" ||
+    (clickBehavior === "event-detail" && entry.entityType === "event");
 
   return (
     <motion.div
@@ -84,7 +78,7 @@ export function CalendarEntryCard({
       role={isClickable ? "button" : undefined}
       tabIndex={isClickable ? 0 : undefined}
       className={cn(
-        "rounded-2xl border border-border bg-card/80 p-3 shadow-[0_10px_26px_rgba(25,25,25,0.04)] transition-colors dark:bg-white/[0.04]",
+        "min-w-0 rounded-2xl border border-border bg-card/80 p-3 shadow-[0_10px_26px_rgba(25,25,25,0.04)] transition-colors dark:bg-white/[0.04]",
         isClickable &&
           "cursor-pointer hover:border-foreground/14 hover:bg-muted/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:hover:border-white/[0.13] dark:hover:bg-white/[0.06]",
       )}
@@ -94,7 +88,8 @@ export function CalendarEntryCard({
         router.push(entry.link);
       }}
       onKeyDown={(event) => {
-        if (!isClickable || (event.key !== "Enter" && event.key !== " ")) return;
+        if (!isClickable || (event.key !== "Enter" && event.key !== " "))
+          return;
         event.preventDefault();
         event.stopPropagation();
         router.push(entry.link);
@@ -112,8 +107,10 @@ export function CalendarEntryCard({
           <Icon className="size-3.5" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-foreground/88">{entry.title}</p>
-          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-foreground/42">
+          <p className="break-words text-sm font-semibold text-foreground/88">
+            {entry.title}
+          </p>
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1">
               <Clock className="size-3" />
               {entry.entityType === "event"

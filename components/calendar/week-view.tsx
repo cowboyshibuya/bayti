@@ -1,17 +1,11 @@
 "use client";
 
-import {
-  startOfWeek,
-  endOfWeek,
-  addDays,
-  isSameDay,
-  format,
-} from "date-fns";
+import { startOfWeek, endOfWeek, addDays, isSameDay, format } from "date-fns";
 import { motion } from "framer-motion";
 
 import type { CalendarEntry } from "./types";
 import { cn } from "@/lib/utils";
-import { CalendarEntryCard } from "./calendar-entry-pill";
+import { CalendarEntryCard, CalendarEntryPill } from "./calendar-entry-pill";
 
 export function WeekView({
   currentDate,
@@ -47,7 +41,9 @@ export function WeekView({
                 isToday && "bg-accent/8",
               )}
             >
-              <p className="text-xs text-foreground/42">{format(date, "EEE")}</p>
+              <p className="text-xs text-foreground/42">
+                {format(date, "EEE")}
+              </p>
               <p
                 className={cn(
                   "mt-0.5 inline-flex size-6 items-center justify-center rounded-full text-sm font-semibold sm:size-7",
@@ -71,20 +67,30 @@ export function WeekView({
           );
 
           return (
-            <motion.div
+            <motion.button
+              type="button"
+              aria-label={`Add to ${format(date, "EEEE, MMMM d, yyyy")}`}
+              aria-haspopup="dialog"
               key={date.toISOString()}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: index * 0.02 }}
-              className="min-h-[200px] cursor-pointer border-r border-border p-1.5 transition-colors last:border-r-0 hover:bg-muted/45 sm:min-h-[300px] sm:p-2 dark:hover:bg-white/[0.045]"
+              className="flex flex-col items-stretch min-w-0 min-h-[200px] cursor-pointer text-left focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-[-2px] border-r border-border p-1.5 transition-colors last:border-r-0 hover:bg-muted/45 sm:min-h-[300px] sm:p-2 dark:hover:bg-white/[0.045]"
               onClick={() => onSelectDay(date)}
             >
               <div className="flex flex-col gap-2">
                 {dayEntries.map((entry) => (
-                  <CalendarEntryCard
+                  <div
                     key={`${entry.entityType}-${entry.id}`}
-                    entry={entry}
-                  />
+                    className="min-w-0"
+                  >
+                    <div className="min-w-0 lg:hidden">
+                      <CalendarEntryPill entry={entry} className="w-full" />
+                    </div>
+                    <div className="hidden lg:block">
+                      <CalendarEntryCard entry={entry} />
+                    </div>
+                  </div>
                 ))}
                 {dayEntries.length === 0 && (
                   <p className="mt-4 text-center text-xs text-foreground/30">
@@ -92,7 +98,7 @@ export function WeekView({
                   </p>
                 )}
               </div>
-            </motion.div>
+            </motion.button>
           );
         })}
       </div>

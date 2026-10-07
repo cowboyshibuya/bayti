@@ -2,14 +2,7 @@
 
 import { use, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
-import {
-  ArrowLeft,
-  CalendarDays,
-  MapPin,
-  StickyNote,
-  Trash2,
-} from "lucide-react";
-import Link from "next/link";
+import { CalendarDays, MapPin, StickyNote, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { Doc, Id } from "@/convex/_generated/dataModel";
@@ -22,6 +15,7 @@ import {
   type EventFormSubmitValues,
 } from "@/components/events/event-form";
 import { EventStatusBadge } from "@/components/events/event-status-badge";
+import { BackButton } from "@/components/shared/back-button";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -123,14 +117,8 @@ export default function EventDetailPage({
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
       <div>
-        <Button variant="ghost" asChild className="-ml-2 mb-4">
-          <Link href="/events">
-            <ArrowLeft className="size-4" />
-            Back to events
-          </Link>
-        </Button>
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
+          <div className="min-w-0 flex-1">
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <EventStatusBadge status={event.status} />
               {event.isAllDay && (
@@ -139,9 +127,12 @@ export default function EventDetailPage({
                 </span>
               )}
             </div>
-            <h1 className="text-3xl font-semibold tracking-normal">
-              {event.title}
-            </h1>
+            <div className="flex min-w-0 items-center gap-2">
+              <BackButton href="/events" label="Back to events" />
+              <h1 className="min-w-0 break-words text-3xl font-semibold tracking-normal">
+                {event.title}
+              </h1>
+            </div>
             {event.description && (
               <p className="mt-3 max-w-2xl whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
                 {event.description}

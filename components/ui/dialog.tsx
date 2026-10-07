@@ -5,6 +5,7 @@ import { Dialog as DialogPrimitive } from "radix-ui";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 
 import { cn } from "@/lib/utils";
+import { BackButton } from "@/components/shared/back-button";
 import { Button } from "@/components/ui/button";
 import { XIcon } from "lucide-react";
 
@@ -14,6 +15,7 @@ type FormDialogContextValue = {
   setDirty: (dirty: boolean) => void;
   cancel: () => void;
   deleteAction?: () => void;
+  resetForm: () => boolean;
 };
 const FormDialogContext = React.createContext<FormDialogContextValue | null>(
   null,
@@ -54,6 +56,15 @@ function Dialog({
     <FormDialogContext.Provider
       value={{
         deleteAction: onDelete,
+        resetForm: () => {
+          if (
+            busy.current ||
+            (dirty.current && !window.confirm("Discard your unsaved changes?"))
+          )
+            return false;
+          dirty.current = false;
+          return true;
+        },
         saved: () => change(false, true),
         cancel: () => change(false),
         setBusy: (value) => {
@@ -177,13 +188,35 @@ function DialogContent({
   );
 }
 
-function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
+function DialogHeader({
+  className,
+  children,
+  onBack,
+  ...props
+}: React.ComponentProps<"div"> & { onBack?: () => void }) {
+  const dialog = useFormDialog();
   return (
     <div
       data-slot="dialog-header"
       className={cn("flex shrink-0 flex-col gap-2 pr-10", className)}
       {...props}
-    />
+    >
+      {React.Children.map(children, (child) => {
+        if (!onBack || !React.isValidElement(child)) return child;
+        if (child.type === DialogTitle)
+          return (
+            <div className="flex min-w-0 items-center gap-2">
+              <BackButton
+                onClick={() => {
+                  if (!dialog || dialog.resetForm()) onBack();
+                }}
+              />
+              {child}
+            </div>
+          );
+        return child;
+      })}
+    </div>
   );
 }
 
@@ -222,7 +255,7 @@ function DialogTitle({
     <DialogPrimitive.Title
       data-slot="dialog-title"
       className={cn(
-        "font-heading text-xl leading-tight font-semibold text-balance",
+        "min-w-0 break-words font-heading text-xl leading-tight font-semibold text-balance",
         className,
       )}
       {...props}

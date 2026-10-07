@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { EntityEditButton } from "@/components/shared/entity-edit-button";
 import { CalendarClock, CreditCard, ReceiptText, Repeat } from "lucide-react";
-import { motion } from "framer-motion";
 
 import type { Doc } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
@@ -32,14 +31,9 @@ export function BillCard({
     bill.status !== "cancelled" && (bill.autopay || bill.recurrenceRuleId);
 
   return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -8 }}
-
+    <div
       className={cn(
-        "min-w-0 rounded-xl border border-border bg-card p-4 transition-colors shadow-[0_12px_32px_rgba(25,25,25,0.04)]",
+        "relative min-w-0 rounded-xl border border-border bg-card p-4 transition-colors shadow-[0_12px_32px_rgba(25,25,25,0.04)]",
         overdue
           ? "border-destructive/25 bg-destructive/10"
           : "hover:border-foreground/14 hover:bg-muted/45 dark:bg-white/[0.04] dark:hover:border-white/[0.13] dark:hover:bg-white/[0.06]",
@@ -47,6 +41,7 @@ export function BillCard({
     >
       <div className="flex items-start justify-between gap-3">
         <EntityEditButton
+          stretch
           entity={{ kind: "bill", value: bill }}
           href={`/bills/${bill._id}`}
         >
@@ -76,6 +71,7 @@ export function BillCard({
             <Button
               size="sm"
               variant="outline"
+              className="relative z-10"
               onClick={() => onMarkPaid(bill)}
             >
               Pay
@@ -85,7 +81,7 @@ export function BillCard({
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <Link
           href={`/bills/${bill._id}`}
-          className="ml-auto rounded-lg px-2 py-2 text-sm font-medium underline-offset-4 hover:underline focus-visible:outline-2"
+          className="relative z-10 ml-auto rounded-lg px-2 py-2 text-sm font-medium underline-offset-4 hover:underline focus-visible:outline-2"
         >
           Details
         </Link>
@@ -131,6 +127,6 @@ export function BillCard({
           </span>
         )}
       </div>
-    </motion.div>
+    </div>
   );
 }

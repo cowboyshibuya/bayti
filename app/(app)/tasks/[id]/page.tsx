@@ -2,8 +2,7 @@
 
 import { use, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
-import { ArrowLeft, CalendarClock, Repeat, Trash2 } from "lucide-react";
-import Link from "next/link";
+import { CalendarClock, Repeat, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { Doc, Id } from "@/convex/_generated/dataModel";
@@ -17,6 +16,7 @@ import {
 } from "@/components/tasks/task-form";
 import { TaskPriorityBadge } from "@/components/tasks/task-priority-badge";
 import { TaskStatusBadge } from "@/components/tasks/task-status-badge";
+import { BackButton } from "@/components/shared/back-button";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -127,14 +127,8 @@ export default function TaskDetailPage({
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
       <div>
-        <Button variant="ghost" asChild className="-ml-2 mb-4">
-          <Link href="/tasks">
-            <ArrowLeft className="size-4" />
-            Back to tasks
-          </Link>
-        </Button>
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
+          <div className="min-w-0 flex-1">
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <TaskStatusBadge status={task.status} />
               <TaskPriorityBadge priority={task.priority} />
@@ -142,9 +136,12 @@ export default function TaskDetailPage({
                 {toTitleLabel(task.taskType)}
               </span>
             </div>
-            <h1 className="text-3xl font-semibold tracking-normal">
-              {task.title}
-            </h1>
+            <div className="flex min-w-0 items-center gap-2">
+              <BackButton href="/tasks" label="Back to tasks" />
+              <h1 className="min-w-0 break-words text-3xl font-semibold tracking-normal">
+                {task.title}
+              </h1>
+            </div>
             {task.description && (
               <p className="mt-3 max-w-2xl whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
                 {task.description}

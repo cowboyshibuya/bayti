@@ -1,7 +1,19 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
-import { format, addMonths, subMonths, addWeeks, subWeeks, addDays, subDays } from "date-fns";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Calendar as CalendarIcon,
+} from "lucide-react";
+import {
+  format,
+  addMonths,
+  subMonths,
+  addWeeks,
+  subWeeks,
+  addDays,
+  subDays,
+} from "date-fns";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -69,13 +81,23 @@ export function CalendarHeader({
           Today
         </Button>
         <div className="flex items-center rounded-lg border">
-          <Button variant="ghost" size="icon-sm" onClick={goPrev}>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Previous period"
+            onClick={goPrev}
+          >
             <ChevronLeft className="size-4" />
           </Button>
-          <span className="min-w-[160px] px-2 text-center text-sm font-medium tabular-nums">
+          <span className="min-w-0 max-w-[calc(100vw-8rem)] px-2 text-wrap text-center text-sm font-medium tabular-nums">
             {label()}
           </span>
-          <Button variant="ghost" size="icon-sm" onClick={goNext}>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Next period"
+            onClick={goNext}
+          >
             <ChevronRight className="size-4" />
           </Button>
         </div>

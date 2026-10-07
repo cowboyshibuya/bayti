@@ -17,3 +17,7 @@ Convex agent skills for common tasks can be installed by running
 `npx convex ai-files install`.
 
 <!-- convex-ai-end -->
+
+## Back navigation in interfaces
+
+For any modal or view with a back action, use the shared `BackButton`: a chevron-only control immediately before the title in the same header row. Do not render a separate text Back button above the content or elsewhere in the view. Give the control an accessible name (for example, “Back to tasks”) and retain keyboard focus, unsaved-change confirmation, and pending-save protection. For dialogs, pass `onBack` to `DialogHeader` to apply this pattern and its form guards automatically.
