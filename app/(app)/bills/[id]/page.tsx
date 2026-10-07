@@ -2,18 +2,30 @@
 
 import { use, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
-import { ArrowLeft, CalendarClock, CreditCard, ReceiptText, Repeat, Trash2 } from "lucide-react";
+import {
+  ArrowLeft,
+  CalendarClock,
+  CreditCard,
+  ReceiptText,
+  Repeat,
+  Trash2,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-
 
 import { Doc, Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
 import { RecentActivityPanel } from "@/components/dashboard/recent-activity-panel";
 import { LoadingState } from "@/components/shared/loading-state";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
-import { MemberDisplay, findMemberByUserId } from "@/components/shared/member-display";
-import { BillForm, type BillFormSubmitValues } from "@/components/bills/bill-form";
+import {
+  MemberDisplay,
+  findMemberByUserId,
+} from "@/components/shared/member-display";
+import {
+  BillForm,
+  type BillFormSubmitValues,
+} from "@/components/bills/bill-form";
 import { BillStatusBadge } from "@/components/bills/bill-status-badge";
 import { BillPriorityBadge } from "@/components/bills/bill-priority-badge";
 import { Button } from "@/components/ui/button";
@@ -57,9 +69,7 @@ export default function BillDetailPage({
   );
   const activity = useQuery(
     api.activity.listForEntity,
-    householdId
-      ? { householdId, entityType: "bill", entityId: id }
-      : "skip",
+    householdId ? { householdId, entityType: "bill", entityId: id } : "skip",
   );
   const updateBill = useMutation(api.bills.update);
   const updateStatus = useMutation(api.bills.updateStatus);
@@ -78,7 +88,8 @@ export default function BillDetailPage({
   const bill = billDetails.bill;
   const recurrence = billDetails.recurrence;
   const owner = findMemberByUserId(members, bill.ownerUserId);
-  const isSubscription = bill.status !== "cancelled" && (bill.autopay || bill.recurrenceRuleId);
+  const isSubscription =
+    bill.status !== "cancelled" && (bill.autopay || bill.recurrenceRuleId);
 
   async function handleUpdate(values: BillFormSubmitValues) {
     if (!householdId || !bill) {
@@ -88,18 +99,19 @@ export default function BillDetailPage({
     await updateBill({
       householdId,
       billId: bill._id,
+      status: values.status,
       title: values.title,
-      description: values.description,
-      provider: values.provider,
-      amountExpected: values.amountExpected,
+      description: values.description ?? "",
+      provider: values.provider ?? "",
+      amountExpected: values.amountExpected ?? null,
       currency: values.currency,
+      paidAt: values.paidAt,
       dueAt: values.dueAt ?? null,
       priority: values.priority,
       ownerUserId: values.ownerUserId ?? null,
       autopay: values.autopay,
       recurrence: values.recurrence,
     });
-    await updateStatus({ householdId, billId: bill._id, status: values.status });
     setEditOpen(false);
   }
 
@@ -122,7 +134,9 @@ export default function BillDetailPage({
       setDeleteOpen(false);
       router.push("/bills");
     } catch (caught) {
-      setDeleteError(caught instanceof Error ? caught.message : "Could not delete bill.");
+      setDeleteError(
+        caught instanceof Error ? caught.message : "Could not delete bill.",
+      );
     } finally {
       setDeletePending(false);
     }
@@ -160,7 +174,9 @@ export default function BillDetailPage({
                 </span>
               )}
             </div>
-            <h1 className="text-3xl font-semibold tracking-normal">{bill.title}</h1>
+            <h1 className="text-3xl font-semibold tracking-normal">
+              {bill.title}
+            </h1>
             {bill.description && (
               <p className="mt-3 max-w-2xl whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
                 {bill.description}
@@ -168,11 +184,15 @@ export default function BillDetailPage({
             )}
           </div>
           <div className="flex flex-wrap gap-2">
-            <Dialog open={editOpen} onOpenChange={setEditOpen}>
+            <Dialog
+              open={editOpen}
+              onOpenChange={setEditOpen}
+              onDelete={() => setDeleteOpen(true)}
+            >
               <DialogTrigger asChild>
                 <Button variant="outline">Edit</Button>
               </DialogTrigger>
-              <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-2xl">
+              <DialogContent className="sm:max-w-2xl">
                 <DialogHeader>
                   <DialogTitle>Edit bill</DialogTitle>
                   <DialogDescription>
@@ -189,14 +209,19 @@ export default function BillDetailPage({
               </DialogContent>
             </Dialog>
             {bill.status !== "paid" && bill.status !== "cancelled" && (
-              <Button variant="accent" onClick={() => void markPaid({ householdId, billId: bill._id })}>
+              <Button
+                variant="accent"
+                onClick={() => void markPaid({ householdId, billId: bill._id })}
+              >
                 Mark paid
               </Button>
             )}
             {bill.status !== "cancelled" && (
               <Button
                 variant="outline"
-                onClick={() => void cancelBill({ householdId, billId: bill._id })}
+                onClick={() =>
+                  void cancelBill({ householdId, billId: bill._id })
+                }
               >
                 Cancel
               </Button>
@@ -223,7 +248,11 @@ export default function BillDetailPage({
               icon={ReceiptText}
             />
             <DetailItem label="Provider" value={bill.provider ?? "Not set"} />
-            <DetailItem label="Due date" value={formatDate(bill.dueAt)} icon={CalendarClock} />
+            <DetailItem
+              label="Due date"
+              value={formatDate(bill.dueAt)}
+              icon={CalendarClock}
+            />
             <DetailItem
               label="Subscription"
               value={isSubscription ? "Tracked" : "Not tracked"}
@@ -231,26 +260,47 @@ export default function BillDetailPage({
             />
             <DetailItem
               label="Recurrence"
-              value={recurrence ? `${toTitleLabel(recurrence.frequency)} every ${recurrence.interval}` : "None"}
+              value={
+                recurrence
+                  ? `${toTitleLabel(recurrence.frequency)} every ${recurrence.interval}`
+                  : "None"
+              }
               icon={Repeat}
             />
-            <DetailItem label="Created" value={formatDateTime(bill.createdAt)} />
-            <DetailItem label="Updated" value={formatDateTime(bill.updatedAt)} />
+            <DetailItem
+              label="Created"
+              value={formatDateTime(bill.createdAt)}
+            />
+            <DetailItem
+              label="Updated"
+              value={formatDateTime(bill.updatedAt)}
+            />
             {bill.paidAt && (
               <DetailItem label="Paid on" value={formatDateTime(bill.paidAt)} />
             )}
           </div>
           <div className="mt-4 rounded-xl border p-4">
-            <p className="text-xs font-medium uppercase text-muted-foreground">Owner</p>
+            <p className="text-xs font-medium uppercase text-muted-foreground">
+              Owner
+            </p>
             {owner ? (
-              <MemberDisplay member={owner} detail={owner.user?.email ?? "No email"} className="mt-2" />
+              <MemberDisplay
+                member={owner}
+                detail={owner.user?.email ?? "No email"}
+                className="mt-2"
+              />
             ) : (
               <p className="mt-2 text-sm text-muted-foreground">Unassigned</p>
             )}
           </div>
           <div className="mt-6 grid gap-2">
             <label className="text-sm font-medium">Status</label>
-            <Select value={bill.status} onValueChange={(value) => void handleStatusChange(value as Doc<"bills">["status"])}>
+            <Select
+              value={bill.status}
+              onValueChange={(value) =>
+                void handleStatusChange(value as Doc<"bills">["status"])
+              }
+            >
               <SelectTrigger className="max-w-xs">
                 <SelectValue />
               </SelectTrigger>
@@ -295,7 +345,9 @@ function DetailItem({
 }) {
   return (
     <div className="rounded-xl border p-4 transition-colors hover:border-foreground/15">
-      <p className="text-xs font-medium uppercase text-muted-foreground">{label}</p>
+      <p className="text-xs font-medium uppercase text-muted-foreground">
+        {label}
+      </p>
       <p className="mt-2 flex items-center gap-2 text-sm">
         {Icon && <Icon className="size-4 text-muted-foreground" />}
         {value}

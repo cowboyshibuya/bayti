@@ -3,11 +3,7 @@ import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
-import {
-  ACTIVITY_ACTIONS,
-  ADULT_ROLES,
-  ENTITY_TYPES,
-} from "./lib/constants";
+import { ACTIVITY_ACTIONS, ADULT_ROLES, ENTITY_TYPES } from "./lib/constants";
 import { writeActivityEvent } from "./lib/activity";
 import {
   requireCurrentUser,
@@ -23,7 +19,8 @@ import { expenseCategoryValidator } from "./lib/validators";
 function cleanTitle(title: string) {
   const trimmed = title.trim();
   if (trimmed.length < 1) throw new Error("Expense title is required.");
-  if (trimmed.length > 140) throw new Error("Expense title must be 140 characters or fewer.");
+  if (trimmed.length > 140)
+    throw new Error("Expense title must be 140 characters or fewer.");
   return trimmed;
 }
 
@@ -76,22 +73,40 @@ export const list = query({
     if (args.startDate !== undefined && args.endDate !== undefined) {
       const s = args.startDate;
       const e = args.endDate;
-      expenses = expenses.filter(
-        (exp) => exp.spentAt >= s && exp.spentAt <= e,
-      );
+      expenses = expenses.filter((exp) => exp.spentAt >= s && exp.spentAt <= e);
     }
 
     if (args.view === "this_month") {
       const now = new Date();
       const start = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
-      const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999).getTime();
+      const end = new Date(
+        now.getFullYear(),
+        now.getMonth() + 1,
+        0,
+        23,
+        59,
+        59,
+        999,
+      ).getTime();
       expenses = expenses.filter((e) => e.spentAt >= start && e.spentAt <= end);
     }
 
     if (args.view === "last_month") {
       const now = new Date();
-      const start = new Date(now.getFullYear(), now.getMonth() - 1, 1).getTime();
-      const end = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999).getTime();
+      const start = new Date(
+        now.getFullYear(),
+        now.getMonth() - 1,
+        1,
+      ).getTime();
+      const end = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        0,
+        23,
+        59,
+        59,
+        999,
+      ).getTime();
       expenses = expenses.filter((e) => e.spentAt >= start && e.spentAt <= end);
     }
 
@@ -109,7 +124,11 @@ export const get = query({
     expenseId: v.id("expenses"),
   },
   handler: async (ctx, args) => {
-    return await requireExpenseInHousehold(ctx, args.householdId, args.expenseId);
+    return await requireExpenseInHousehold(
+      ctx,
+      args.householdId,
+      args.expenseId,
+    );
   },
 });
 
@@ -134,13 +153,16 @@ export const create = mutation({
       await requireHouseholdMember(ctx, args.householdId, args.paidByUserId);
     }
 
+    const household = await ctx.db.get(args.householdId);
+    const currency =
+      args.currency?.toUpperCase() ?? household?.currency ?? "EUR";
     const now = Date.now();
     const expenseId = await ctx.db.insert("expenses", {
       householdId: args.householdId,
       title: cleanTitle(args.title),
       merchant: cleanString(args.merchant),
       amount: Math.max(0, args.amount),
-      currency: args.currency?.toUpperCase() ?? "EUR",
+      currency,
       spentAt: args.spentAt,
       category: args.category,
       paymentMethod: cleanString(args.paymentMethod),
@@ -157,7 +179,7 @@ export const create = mutation({
       action: ACTIVITY_ACTIONS.expenseCreated,
       entityType: ENTITY_TYPES.expense,
       entityId: expenseId,
-      message: `Logged expense "${args.title.trim()}" (${args.amount.toFixed(2)} ${args.currency?.toUpperCase() ?? "EUR"}).`,
+      message: `Logged expense "${args.title.trim()}" (${args.amount.toFixed(2)} ${currency}).`,
     });
 
     return expenseId;
@@ -190,14 +212,18 @@ export const update = mutation({
     const patch: Record<string, unknown> = { updatedAt: Date.now() };
 
     if (args.title !== undefined) patch.title = cleanTitle(args.title);
-    if (args.merchant !== undefined) patch.merchant = cleanString(args.merchant);
+    if (args.merchant !== undefined)
+      patch.merchant = cleanString(args.merchant);
     if (args.amount !== undefined) patch.amount = Math.max(0, args.amount);
-    if (args.currency !== undefined) patch.currency = args.currency.toUpperCase();
+    if (args.currency !== undefined)
+      patch.currency = args.currency.toUpperCase();
     if (args.spentAt !== undefined) patch.spentAt = args.spentAt;
     if (args.category !== undefined) patch.category = args.category;
-    if (args.paymentMethod !== undefined) patch.paymentMethod = cleanString(args.paymentMethod);
+    if (args.paymentMethod !== undefined)
+      patch.paymentMethod = cleanString(args.paymentMethod);
     if (args.notes !== undefined) patch.notes = cleanString(args.notes);
-    if (args.paidByUserId !== undefined) patch.paidByUserId = args.paidByUserId ?? undefined;
+    if (args.paidByUserId !== undefined)
+      patch.paidByUserId = args.paidByUserId ?? undefined;
 
     await ctx.db.patch(args.expenseId, patch);
 
@@ -221,11 +247,25 @@ export const remove = mutation({
   },
   handler: async (ctx, args) => {
     const user = await requireCurrentUser(ctx);
-    const expense = await requireExpenseInHousehold(ctx, args.householdId, args.expenseId);
+    const expense = await requireExpenseInHousehold(
+      ctx,
+      args.householdId,
+      args.expenseId,
+    );
     await requireHouseholdRole(ctx, args.householdId, ADULT_ROLES);
 
-    await deleteDocumentLinksForEntity(ctx, args.householdId, "expense", args.expenseId);
-    await deleteTaggingsForEntity(ctx, args.householdId, ENTITY_TYPES.expense, args.expenseId);
+    await deleteDocumentLinksForEntity(
+      ctx,
+      args.householdId,
+      "expense",
+      args.expenseId,
+    );
+    await deleteTaggingsForEntity(
+      ctx,
+      args.householdId,
+      ENTITY_TYPES.expense,
+      args.expenseId,
+    );
     await ctx.db.delete(args.expenseId);
 
     await writeActivityEvent(ctx, {
@@ -249,8 +289,20 @@ export const dashboard = query({
     await requireHouseholdMember(ctx, args.householdId);
 
     const now = new Date();
-    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
-    const thisMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999).getTime();
+    const thisMonthStart = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      1,
+    ).getTime();
+    const thisMonthEnd = new Date(
+      now.getFullYear(),
+      now.getMonth() + 1,
+      0,
+      23,
+      59,
+      59,
+      999,
+    ).getTime();
     const todayStart = new Date(now);
     todayStart.setHours(0, 0, 0, 0);
     const todayEnd = new Date(todayStart);
@@ -265,17 +317,25 @@ export const dashboard = query({
       (e) => e.spentAt >= thisMonthStart && e.spentAt <= thisMonthEnd,
     );
     const todayExpenses = expenses.filter(
-      (e) => e.spentAt >= todayStart.getTime() && e.spentAt <= todayEnd.getTime(),
+      (e) =>
+        e.spentAt >= todayStart.getTime() && e.spentAt <= todayEnd.getTime(),
     );
 
-    const totalThisMonth = thisMonthExpenses.reduce((sum, e) => sum + e.amount, 0);
+    const totalThisMonth = thisMonthExpenses.reduce(
+      (sum, e) => sum + e.amount,
+      0,
+    );
     const totalToday = todayExpenses.reduce((sum, e) => sum + e.amount, 0);
 
     return {
-      recentExpenses: expenses.sort((a, b) => b.spentAt - a.spentAt).slice(0, 5),
+      recentExpenses: expenses
+        .sort((a, b) => b.spentAt - a.spentAt)
+        .slice(0, 5),
       totalThisMonth,
       countThisMonth: thisMonthExpenses.length,
-      todayExpenses: todayExpenses.sort((a, b) => b.spentAt - a.spentAt).slice(0, 5),
+      todayExpenses: todayExpenses
+        .sort((a, b) => b.spentAt - a.spentAt)
+        .slice(0, 5),
       totalToday,
       countToday: todayExpenses.length,
     };

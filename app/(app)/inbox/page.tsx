@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  EntityCollection,
+  type ListControls,
+} from "@/components/shared/entity-collection";
 import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { Bell, Inbox, Plus } from "lucide-react";
@@ -40,13 +44,18 @@ const inboxViews = [
 type InboxView = (typeof inboxViews)[number]["value"];
 
 export default function InboxPage() {
+  const [controls, setControls] = useState<ListControls | undefined>();
   const [view, setView] = useState<InboxView>("all");
   const [createOpen, setCreateOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InboxItem | null>(null);
-  const [reminderToDelete, setReminderToDelete] = useState<InboxItem | null>(null);
+  const [reminderToDelete, setReminderToDelete] = useState<InboxItem | null>(
+    null,
+  );
   const [deletePending, setDeletePending] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-  const { household } = useHousehold();
+  const { household, membership } = useHousehold();
+  const canEdit =
+    membership && ["admin", "adult", "child"].includes(membership.role);
   const householdId = household?._id;
   const members = useQuery(
     api.members.listAssignable,
@@ -54,7 +63,9 @@ export default function InboxPage() {
   );
   const items = useQuery(
     api.inbox.list,
-    householdId ? { householdId, view, windowDays: 7, limit: 60 } : "skip",
+    householdId
+      ? { householdId, view, windowDays: 7, limit: 60, controls }
+      : "skip",
   );
   const createReminder = useMutation(api.reminders.create);
   const updateReminder = useMutation(api.reminders.update);
@@ -64,7 +75,7 @@ export default function InboxPage() {
   const markTaskDone = useMutation(api.tasks.markDone);
   const markBillPaid = useMutation(api.bills.markPaid);
 
-  if (!householdId || members === undefined || items === undefined) {
+  if (!householdId || members === undefined) {
     return <LoadingState label="Loading inbox" />;
   }
 
@@ -108,9 +119,13 @@ export default function InboxPage() {
         householdId: currentHouseholdId,
         reminderId: reminderToDelete.reminderId,
       });
+      if (editingItem?.reminderId === reminderToDelete.reminderId)
+        setEditingItem(null);
       setReminderToDelete(null);
     } catch (caught) {
-      setDeleteError(caught instanceof Error ? caught.message : "Could not delete reminder.");
+      setDeleteError(
+        caught instanceof Error ? caught.message : "Could not delete reminder.",
+      );
     } finally {
       setDeletePending(false);
     }
@@ -133,7 +148,7 @@ export default function InboxPage() {
               Reminder
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-2xl">
+          <DialogContent className="sm:max-w-2xl">
             <DialogHeader>
               <DialogTitle>Create reminder</DialogTitle>
               <DialogDescription>
@@ -164,48 +179,69 @@ export default function InboxPage() {
       </div>
 
       <div className="mt-6 grid gap-3">
-        {items.length === 0 ? (
-          <EmptyState
-            icon={view === "reminders" ? Bell : Inbox}
-            title={view === "reminders" ? "No reminders" : "Inbox is clear"}
-            description={
-              view === "reminders"
-                ? "Create a reminder to keep a household follow-up visible."
-                : "Due tasks, bills, events, document expiries, and reminders will appear here."
-            }
-          />
-        ) : (
-          items.map((item) => (
-            <InboxItemCard
-              key={item.id}
-              item={item}
-              onMarkDone={(taskId) =>
-                void markTaskDone({ householdId, taskId })
-              }
-              onMarkPaid={(billId) =>
-                void markBillPaid({ householdId, billId })
-              }
-              onDismissReminder={(reminderId) =>
-                void dismissReminder({ householdId, reminderId })
-              }
-              onCancelReminder={(reminderId) =>
-                void cancelReminder({ householdId, reminderId })
-              }
-              onDeleteReminder={(item) => {
-                setDeleteError(null);
-                setReminderToDelete(item);
-              }}
-              onEditReminder={setEditingItem}
-            />
-          ))
-        )}
+        <EntityCollection
+          items={(items ?? []).map((item) => ({
+            ...item,
+            _id: item.id,
+            ownerUserId: item.ownerUserId ?? undefined,
+            targetUserId: item.targetUserId ?? undefined,
+          }))}
+          date={(item) => item.dueAt}
+          dateLabel="Reminder / due date"
+          onControlsChange={setControls}
+        >
+          {(visible) =>
+            items === undefined ? (
+              <LoadingState label="Loading inbox" />
+            ) : visible.length === 0 ? (
+              <EmptyState
+                icon={view === "reminders" ? Bell : Inbox}
+                title={view === "reminders" ? "No reminders" : "Inbox is clear"}
+                description={
+                  view === "reminders"
+                    ? "Create a reminder to keep a household follow-up visible."
+                    : "Due tasks, bills, events, document expiries, and reminders will appear here."
+                }
+              />
+            ) : (
+              visible.map((item) => (
+                <InboxItemCard
+                  key={item.id}
+                  item={{
+                    ...item,
+                    ownerUserId: item.ownerUserId ?? null,
+                    targetUserId: item.targetUserId ?? null,
+                  }}
+                  onMarkDone={(taskId) =>
+                    void markTaskDone({ householdId, taskId })
+                  }
+                  onMarkPaid={(billId) =>
+                    void markBillPaid({ householdId, billId })
+                  }
+                  onDismissReminder={(reminderId) =>
+                    void dismissReminder({ householdId, reminderId })
+                  }
+                  onCancelReminder={(reminderId) =>
+                    void cancelReminder({ householdId, reminderId })
+                  }
+                  onDeleteReminder={(item) => {
+                    setDeleteError(null);
+                    setReminderToDelete(item);
+                  }}
+                  onEditReminder={canEdit ? setEditingItem : undefined}
+                />
+              ))
+            )
+          }
+        </EntityCollection>
       </div>
 
       <Dialog
         open={Boolean(editingItem)}
+        onDelete={() => setReminderToDelete(editingItem)}
         onOpenChange={(open) => !open && setEditingItem(null)}
       >
-        <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-2xl">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Edit reminder</DialogTitle>
             <DialogDescription>

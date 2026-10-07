@@ -1,16 +1,18 @@
 "use client";
 
+import { EntityEditButton } from "@/components/shared/entity-edit-button";
 import { useQuery } from "convex/react";
 import { WalletCards } from "lucide-react";
 
 import { api } from "@/convex/_generated/api";
 import { EmptyState } from "@/components/shared/empty-state";
-import { formatCurrency } from "@/lib/formatters";
+import { useCurrencyFormatter } from "@/lib/use-currency-formatter";
 import { formatDate } from "@/lib/dates";
 import { useHousehold } from "@/lib/household-context";
 import { PanelShell } from "./panel-shell";
 
 export function RecentExpensesPanel() {
+  const formatCurrency = useCurrencyFormatter();
   const { household } = useHousehold();
   const householdId = household?._id;
   const expenseDashboard = useQuery(
@@ -20,7 +22,10 @@ export function RecentExpensesPanel() {
 
   if (expenseDashboard === undefined) {
     return (
-      <PanelShell title="Recent expenses" description="Latest household spending.">
+      <PanelShell
+        title="Recent expenses"
+        description="Latest household spending."
+      >
         <p className="text-sm text-foreground/42">Loading...</p>
       </PanelShell>
     );
@@ -28,7 +33,10 @@ export function RecentExpensesPanel() {
 
   if (expenseDashboard.recentExpenses.length === 0) {
     return (
-      <PanelShell title="Recent expenses" description="Latest household spending.">
+      <PanelShell
+        title="Recent expenses"
+        description="Latest household spending."
+      >
         <EmptyState
           icon={WalletCards}
           title="No expenses logged"
@@ -39,19 +47,24 @@ export function RecentExpensesPanel() {
   }
 
   return (
-    <PanelShell title="Recent expenses" description="Latest household spending.">
+    <PanelShell
+      title="Recent expenses"
+      description="Latest household spending."
+    >
       <div className="grid gap-3">
         {expenseDashboard.recentExpenses.map((expense) => (
           <div
             key={expense._id}
             className="flex items-center justify-between rounded-2xl border border-border bg-card/80 px-3 py-2 text-sm dark:bg-white/[0.04]"
           >
-            <div className="min-w-0">
-              <p className="truncate font-semibold text-foreground/88">{expense.title}</p>
+            <EntityEditButton entity={{ kind: "expense", value: expense }}>
+              <p className="truncate font-semibold text-foreground/88">
+                {expense.title}
+              </p>
               <p className="text-xs text-foreground/40">
                 {expense.category} · {formatDate(expense.spentAt)}
               </p>
-            </div>
+            </EntityEditButton>
             <span className="shrink-0 font-semibold text-foreground/86">
               {formatCurrency(expense.amount, expense.currency)}
             </span>

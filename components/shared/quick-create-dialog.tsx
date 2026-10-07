@@ -6,11 +6,26 @@ import { useMutation, useQuery } from "convex/react";
 import { Plus } from "lucide-react";
 
 import { api } from "@/convex/_generated/api";
-import { TaskForm, type TaskFormSubmitValues } from "@/components/tasks/task-form";
-import { BillForm, type BillFormSubmitValues } from "@/components/bills/bill-form";
-import { EventForm, type EventFormSubmitValues } from "@/components/events/event-form";
-import { ShoppingListForm, type ShoppingListFormSubmitValues } from "@/components/shopping/shopping-forms";
-import { ExpenseForm, type ExpenseFormSubmitValues } from "@/components/accounting/expense-form";
+import {
+  TaskForm,
+  type TaskFormSubmitValues,
+} from "@/components/tasks/task-form";
+import {
+  BillForm,
+  type BillFormSubmitValues,
+} from "@/components/bills/bill-form";
+import {
+  EventForm,
+  type EventFormSubmitValues,
+} from "@/components/events/event-form";
+import {
+  ShoppingListForm,
+  type ShoppingListFormSubmitValues,
+} from "@/components/shopping/shopping-forms";
+import {
+  ExpenseForm,
+  type ExpenseFormSubmitValues,
+} from "@/components/accounting/expense-form";
 import { Button } from "@/components/ui/button";
 import { useHousehold } from "@/lib/household-context";
 import {
@@ -37,7 +52,11 @@ type CreateMode =
   | "reminder"
   | null;
 
-export function QuickCreateDialog({ iconOnly = false }: { iconOnly?: boolean }) {
+export function QuickCreateDialog({
+  iconOnly = false,
+}: {
+  iconOnly?: boolean;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<CreateMode>(null);
@@ -65,7 +84,7 @@ export function QuickCreateDialog({ iconOnly = false }: { iconOnly?: boolean }) 
       taskType: values.taskType,
       ownerUserId: values.ownerUserId,
       dueAt: values.dueAt,
-      recurrence: values.recurrence,
+      recurrence: values.recurrence ?? undefined,
     });
     setMode(null);
     setOpen(false);
@@ -79,6 +98,7 @@ export function QuickCreateDialog({ iconOnly = false }: { iconOnly?: boolean }) 
       description: values.description,
       provider: values.provider,
       amountExpected: values.amountExpected,
+      paidAt: values.paidAt,
       currency: values.currency,
       dueAt: values.dueAt,
       status: values.status,
@@ -109,7 +129,9 @@ export function QuickCreateDialog({ iconOnly = false }: { iconOnly?: boolean }) 
     setOpen(false);
   }
 
-  async function handleCreateShoppingList(values: ShoppingListFormSubmitValues) {
+  async function handleCreateShoppingList(
+    values: ShoppingListFormSubmitValues,
+  ) {
     if (!householdId) return;
     await createShoppingList({
       householdId,
@@ -163,7 +185,7 @@ export function QuickCreateDialog({ iconOnly = false }: { iconOnly?: boolean }) 
           {!iconOnly && "Quick create"}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[90svh] overflow-y-auto">
+      <DialogContent className="">
         <DialogHeader>
           <DialogTitle>Quick actions</DialogTitle>
           <DialogDescription>
@@ -201,9 +223,15 @@ export function QuickCreateDialog({ iconOnly = false }: { iconOnly?: boolean }) 
                     <item.icon className="size-4" />
                   </span>
                   <span>
-                    <span className="block font-semibold text-foreground/88">{item.label}</span>
+                    <span className="block font-semibold text-foreground/88">
+                      {item.label}
+                    </span>
                     <span className="text-xs text-foreground/42">
-                      {item.label === "Ask Stella" ? "Start a conversation" : enabled ? "Click to create" : "Available in a later milestone"}
+                      {item.label === "Ask Stella"
+                        ? "Start a conversation"
+                        : enabled
+                          ? "Click to create"
+                          : "Available in a later milestone"}
                     </span>
                   </span>
                 </button>
@@ -306,7 +334,6 @@ export function QuickCreateDialog({ iconOnly = false }: { iconOnly?: boolean }) 
             />
           </div>
         )}
-
       </DialogContent>
     </Dialog>
   );

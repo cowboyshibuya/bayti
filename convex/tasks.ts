@@ -3,11 +3,7 @@ import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
-import {
-  ACTIVITY_ACTIONS,
-  ENTITY_TYPES,
-  WRITE_ROLES,
-} from "./lib/constants";
+import { ACTIVITY_ACTIONS, ENTITY_TYPES, WRITE_ROLES } from "./lib/constants";
 import { writeActivityEvent } from "./lib/activity";
 import {
   normalizeHouseholdRole,
@@ -77,7 +73,11 @@ async function ensureAssigneeIsMember(
   await requireHouseholdMember(ctx, householdId, ownerUserId);
 }
 
-function nextDueAt(from: number, frequency: Doc<"recurrenceRules">["frequency"], interval: number) {
+function nextDueAt(
+  from: number,
+  frequency: Doc<"recurrenceRules">["frequency"],
+  interval: number,
+) {
   const date = new Date(from);
 
   if (frequency === "daily") {
@@ -103,10 +103,18 @@ async function canRemoveTask(
   task: Doc<"tasks">,
   currentUserId: Id<"users">,
 ) {
-  const membership = await requireHouseholdMember(ctx, householdId, currentUserId);
+  const membership = await requireHouseholdMember(
+    ctx,
+    householdId,
+    currentUserId,
+  );
   const role = normalizeHouseholdRole(membership.role);
 
-  if (role === "admin" || role === "adult" || task.createdByUserId === currentUserId) {
+  if (
+    role === "admin" ||
+    role === "adult" ||
+    task.createdByUserId === currentUserId
+  ) {
     return;
   }
 
@@ -123,11 +131,15 @@ async function setTaskStatus(
 ) {
   const user = await requireCurrentUser(ctx);
   await requireHouseholdRole(ctx, input.householdId, WRITE_ROLES);
-  const task = await requireTaskInHousehold(ctx, input.householdId, input.taskId);
+  const task = await requireTaskInHousehold(
+    ctx,
+    input.householdId,
+    input.taskId,
+  );
   const now = Date.now();
   const completedAt =
     input.status === "done"
-      ? task.completedAt ?? now
+      ? (task.completedAt ?? now)
       : task.status === "done"
         ? undefined
         : task.completedAt;
@@ -254,6 +266,28 @@ export const get = query({
   },
 });
 
+export const getDetails = query({
+  args: { householdId: v.id("households"), taskId: v.id("tasks") },
+  handler: async (ctx, args) => {
+    const task = await requireTaskInHousehold(
+      ctx,
+      args.householdId,
+      args.taskId,
+    );
+    const recurrence = task.recurrenceRuleId
+      ? await ctx.db.get(task.recurrenceRuleId)
+      : null;
+    return {
+      task,
+      recurrence:
+        recurrence?.householdId === args.householdId &&
+        recurrence.entityType === "task"
+          ? recurrence
+          : null,
+    };
+  },
+});
+
 export const create = mutation({
   args: {
     householdId: v.id("households"),
@@ -327,6 +361,18 @@ export const update = mutation({
   args: {
     householdId: v.id("households"),
     taskId: v.id("tasks"),
+    status: v.optional(taskStatusValidator),
+    recurrence: v.optional(
+      v.union(
+        v.null(),
+        v.object({
+          frequency: recurrenceFrequencyValidator,
+          interval: v.number(),
+          startsAt: v.number(),
+          endsAt: v.optional(v.number()),
+        }),
+      ),
+    ),
     title: v.optional(v.string()),
     description: v.optional(v.string()),
     priority: v.optional(taskPriorityValidator),
@@ -337,12 +383,43 @@ export const update = mutation({
   handler: async (ctx, args) => {
     const user = await requireCurrentUser(ctx);
     await requireHouseholdRole(ctx, args.householdId, WRITE_ROLES);
-    await requireTaskInHousehold(ctx, args.householdId, args.taskId);
+    const task = await requireTaskInHousehold(
+      ctx,
+      args.householdId,
+      args.taskId,
+    );
 
     if (args.ownerUserId) {
       await ensureAssigneeIsMember(ctx, args.householdId, args.ownerUserId);
     }
 
+    let recurrenceRuleId = task.recurrenceRuleId;
+    if (args.recurrence !== undefined) {
+      if (args.recurrence === null) recurrenceRuleId = undefined;
+      else if (recurrenceRuleId) {
+        const existingRule = await ctx.db.get(recurrenceRuleId);
+        if (
+          !existingRule ||
+          existingRule.householdId !== args.householdId ||
+          existingRule.entityType !== "task"
+        )
+          throw new Error("Recurrence not found.");
+        await ctx.db.patch(recurrenceRuleId, {
+          ...args.recurrence,
+          interval: Math.max(1, Math.floor(args.recurrence.interval)),
+          updatedAt: Date.now(),
+        });
+      } else
+        recurrenceRuleId = await ctx.db.insert("recurrenceRules", {
+          ...args.recurrence,
+          interval: Math.max(1, Math.floor(args.recurrence.interval)),
+          householdId: args.householdId,
+          entityType: "task",
+          generateAheadDays: 30,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        });
+    }
     await ctx.db.patch(args.taskId, {
       ...(args.title !== undefined ? { title: cleanTitle(args.title) } : {}),
       ...(args.description !== undefined
@@ -354,6 +431,16 @@ export const update = mutation({
         ? { ownerUserId: args.ownerUserId ?? undefined }
         : {}),
       ...(args.dueAt !== undefined ? { dueAt: args.dueAt ?? undefined } : {}),
+      ...(args.status !== undefined
+        ? {
+            status: args.status,
+            completedAt:
+              args.status === "done"
+                ? (task.completedAt ?? Date.now())
+                : undefined,
+          }
+        : {}),
+      ...(args.recurrence !== undefined ? { recurrenceRuleId } : {}),
       updatedAt: Date.now(),
     });
 
@@ -366,6 +453,19 @@ export const update = mutation({
       message: "Updated task details.",
     });
 
+    if (args.status !== undefined && args.status !== task.status) {
+      await writeActivityEvent(ctx, {
+        householdId: args.householdId,
+        actorUserId: user._id,
+        action:
+          args.status === "done"
+            ? ACTIVITY_ACTIONS.taskCompleted
+            : ACTIVITY_ACTIONS.taskStatusChanged,
+        entityType: ENTITY_TYPES.task,
+        entityId: args.taskId,
+        message: `Changed task status to ${args.status.replaceAll("_", " ")}.`,
+      });
+    }
     return args.taskId;
   },
 });
@@ -398,7 +498,11 @@ export const cancel = mutation({
   },
   handler: async (ctx, args) => {
     const user = await requireCurrentUser(ctx);
-    const task = await requireTaskInHousehold(ctx, args.householdId, args.taskId);
+    const task = await requireTaskInHousehold(
+      ctx,
+      args.householdId,
+      args.taskId,
+    );
     await canRemoveTask(ctx, args.householdId, task, user._id);
 
     await ctx.db.patch(args.taskId, {
@@ -427,12 +531,26 @@ export const remove = mutation({
   },
   handler: async (ctx, args) => {
     const user = await requireCurrentUser(ctx);
-    const task = await requireTaskInHousehold(ctx, args.householdId, args.taskId);
+    const task = await requireTaskInHousehold(
+      ctx,
+      args.householdId,
+      args.taskId,
+    );
     await canRemoveTask(ctx, args.householdId, task, user._id);
 
     await deleteLinkedReminders(ctx, args.householdId, "task", args.taskId);
-    await deleteDocumentLinksForEntity(ctx, args.householdId, "task", args.taskId);
-    await deleteTaggingsForEntity(ctx, args.householdId, ENTITY_TYPES.task, args.taskId);
+    await deleteDocumentLinksForEntity(
+      ctx,
+      args.householdId,
+      "task",
+      args.taskId,
+    );
+    await deleteTaggingsForEntity(
+      ctx,
+      args.householdId,
+      ENTITY_TYPES.task,
+      args.taskId,
+    );
     await ctx.db.delete(args.taskId);
 
     await writeActivityEvent(ctx, {
@@ -477,7 +595,9 @@ export const generateRecurringInstances = mutation({
       .withIndex("by_household", (q) => q.eq("householdId", args.householdId))
       .filter((q) => q.eq(q.field("parentTaskId"), template._id))
       .collect();
-    const existingDueDates = new Set(existingChildren.map((task) => task.dueAt));
+    const existingDueDates = new Set(
+      existingChildren.map((task) => task.dueAt),
+    );
     const generatedIds: Id<"tasks">[] = [];
     const now = Date.now();
     const horizon = now + rule.generateAheadDays * MS_PER_DAY;

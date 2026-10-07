@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { EntityCollection } from "@/components/shared/entity-collection";
 import { ReceiptText } from "lucide-react";
 
 import type { Doc } from "@/convex/_generated/dataModel";
@@ -9,52 +9,49 @@ import type { MemberWithUser } from "@/components/shared/member-display";
 import { findMemberByUserId } from "@/components/shared/member-display";
 import { BillCard } from "./bill-card";
 
-const container = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.04 },
-  },
-};
-
 export function BillList({
   bills,
+  dateMode = "due",
   emptyTitle = "No bills found",
   emptyDescription = "Create a bill to start tracking household payments.",
   members = [],
   onMarkPaid,
 }: {
   bills: Doc<"bills">[];
+  dateMode?: "due" | "paid";
   emptyTitle?: string;
   emptyDescription?: string;
   members?: MemberWithUser[];
   onMarkPaid?: (bill: Doc<"bills">) => void;
 }) {
-  if (bills.length === 0) {
-    return (
-      <EmptyState
-        icon={ReceiptText}
-        title={emptyTitle}
-        description={emptyDescription}
-      />
-    );
-  }
-
   return (
-    <motion.div
-      className="grid gap-3"
-      variants={container}
-      initial="hidden"
-      animate="visible"
+    <EntityCollection
+      items={bills}
+      date={(item) => (dateMode === "paid" ? item.paidAt : item.dueAt)}
+      dateLabel={dateMode === "paid" ? "Paid on" : "Due date"}
+      defaultDescending={dateMode === "paid"}
+      amount
     >
-      {bills.map((bill) => (
-        <BillCard
-          key={bill._id}
-          bill={bill}
-          owner={findMemberByUserId(members, bill.ownerUserId)}
-          onMarkPaid={onMarkPaid}
-        />
-      ))}
-    </motion.div>
+      {(visible) =>
+        visible.length === 0 ? (
+          <EmptyState
+            icon={ReceiptText}
+            title={emptyTitle}
+            description={emptyDescription}
+          />
+        ) : (
+          <div className="grid gap-3">
+            {visible.map((bill) => (
+              <BillCard
+                key={bill._id}
+                bill={bill}
+                owner={findMemberByUserId(members, bill.ownerUserId)}
+                onMarkPaid={onMarkPaid}
+              />
+            ))}
+          </div>
+        )
+      }
+    </EntityCollection>
   );
 }

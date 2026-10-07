@@ -11,7 +11,10 @@ import { api } from "@/convex/_generated/api";
 import { RecentActivityPanel } from "@/components/dashboard/recent-activity-panel";
 import { LoadingState } from "@/components/shared/loading-state";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
-import { TaskForm, type TaskFormSubmitValues } from "@/components/tasks/task-form";
+import {
+  TaskForm,
+  type TaskFormSubmitValues,
+} from "@/components/tasks/task-form";
 import { TaskPriorityBadge } from "@/components/tasks/task-priority-badge";
 import { TaskStatusBadge } from "@/components/tasks/task-status-badge";
 import { Button } from "@/components/ui/button";
@@ -44,26 +47,27 @@ export default function TaskDetailPage({
   const router = useRouter();
   const { household } = useHousehold();
   const householdId = household?._id;
-  const task = useQuery(
-    api.tasks.get,
+  const taskDetails = useQuery(
+    api.tasks.getDetails,
     householdId ? { householdId, taskId: id as Id<"tasks"> } : "skip",
   );
+  const task = taskDetails?.task;
   const members = useQuery(
     api.members.listAssignable,
     householdId ? { householdId } : "skip",
   );
   const activity = useQuery(
     api.activity.listForEntity,
-    householdId
-      ? { householdId, entityType: "task", entityId: id }
-      : "skip",
+    householdId ? { householdId, entityType: "task", entityId: id } : "skip",
   );
   const updateTask = useMutation(api.tasks.update);
   const updateStatus = useMutation(api.tasks.updateStatus);
   const markDone = useMutation(api.tasks.markDone);
   const cancelTask = useMutation(api.tasks.cancel);
   const removeTask = useMutation(api.tasks.remove);
-  const generateRecurringInstances = useMutation(api.tasks.generateRecurringInstances);
+  const generateRecurringInstances = useMutation(
+    api.tasks.generateRecurringInstances,
+  );
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deletePending, setDeletePending] = useState(false);
@@ -81,14 +85,15 @@ export default function TaskDetailPage({
     await updateTask({
       householdId,
       taskId: task._id,
+      status: values.status,
+      recurrence: values.recurrence,
       title: values.title,
-      description: values.description,
+      description: values.description ?? "",
       priority: values.priority,
       taskType: values.taskType,
       ownerUserId: values.ownerUserId ?? null,
       dueAt: values.dueAt ?? null,
     });
-    await updateStatus({ householdId, taskId: task._id, status: values.status });
     setEditOpen(false);
   }
 
@@ -111,7 +116,9 @@ export default function TaskDetailPage({
       setDeleteOpen(false);
       router.push("/tasks");
     } catch (caught) {
-      setDeleteError(caught instanceof Error ? caught.message : "Could not delete task.");
+      setDeleteError(
+        caught instanceof Error ? caught.message : "Could not delete task.",
+      );
     } finally {
       setDeletePending(false);
     }
@@ -135,7 +142,9 @@ export default function TaskDetailPage({
                 {toTitleLabel(task.taskType)}
               </span>
             </div>
-            <h1 className="text-3xl font-semibold tracking-normal">{task.title}</h1>
+            <h1 className="text-3xl font-semibold tracking-normal">
+              {task.title}
+            </h1>
             {task.description && (
               <p className="mt-3 max-w-2xl whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
                 {task.description}
@@ -143,11 +152,15 @@ export default function TaskDetailPage({
             )}
           </div>
           <div className="flex flex-wrap gap-2">
-            <Dialog open={editOpen} onOpenChange={setEditOpen}>
+            <Dialog
+              open={editOpen}
+              onOpenChange={setEditOpen}
+              onDelete={() => setDeleteOpen(true)}
+            >
               <DialogTrigger asChild>
                 <Button variant="outline">Edit</Button>
               </DialogTrigger>
-              <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-2xl">
+              <DialogContent className="sm:max-w-2xl">
                 <DialogHeader>
                   <DialogTitle>Edit task</DialogTitle>
                   <DialogDescription>
@@ -157,20 +170,26 @@ export default function TaskDetailPage({
                 <TaskForm
                   members={members}
                   initialTask={task}
+                  initialRecurrence={taskDetails?.recurrence}
                   submitLabel="Save changes"
                   onSubmit={handleUpdate}
                 />
               </DialogContent>
             </Dialog>
             {task.status !== "done" && task.status !== "cancelled" && (
-              <Button variant="accent" onClick={() => void markDone({ householdId, taskId: task._id })}>
+              <Button
+                variant="accent"
+                onClick={() => void markDone({ householdId, taskId: task._id })}
+              >
                 Mark done
               </Button>
             )}
             {task.status !== "cancelled" && (
               <Button
                 variant="outline"
-                onClick={() => void cancelTask({ householdId, taskId: task._id })}
+                onClick={() =>
+                  void cancelTask({ householdId, taskId: task._id })
+                }
               >
                 Cancel
               </Button>
@@ -187,9 +206,19 @@ export default function TaskDetailPage({
         <div className="rounded-2xl border bg-card p-5 [box-shadow:var(--shadow-card)]">
           <h2 className="font-semibold">Task details</h2>
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
-            <DetailItem label="Due date" value={formatDate(task.dueAt)} icon={CalendarClock} />
-            <DetailItem label="Created" value={formatDateTime(task.createdAt)} />
-            <DetailItem label="Updated" value={formatDateTime(task.updatedAt)} />
+            <DetailItem
+              label="Due date"
+              value={formatDate(task.dueAt)}
+              icon={CalendarClock}
+            />
+            <DetailItem
+              label="Created"
+              value={formatDateTime(task.createdAt)}
+            />
+            <DetailItem
+              label="Updated"
+              value={formatDateTime(task.updatedAt)}
+            />
             <DetailItem
               label="Recurrence"
               value={task.recurrenceRuleId ? "Recurring template" : "None"}
@@ -198,7 +227,12 @@ export default function TaskDetailPage({
           </div>
           <div className="mt-6 grid gap-2">
             <label className="text-sm font-medium">Status</label>
-            <Select value={task.status} onValueChange={(value) => void handleStatusChange(value as Doc<"tasks">["status"])}>
+            <Select
+              value={task.status}
+              onValueChange={(value) =>
+                void handleStatusChange(value as Doc<"tasks">["status"])
+              }
+            >
               <SelectTrigger className="max-w-xs">
                 <SelectValue />
               </SelectTrigger>
@@ -257,7 +291,9 @@ function DetailItem({
 }) {
   return (
     <div className="rounded-xl border p-4 transition-colors hover:border-foreground/15">
-      <p className="text-xs font-medium uppercase text-muted-foreground">{label}</p>
+      <p className="text-xs font-medium uppercase text-muted-foreground">
+        {label}
+      </p>
       <p className="mt-2 flex items-center gap-2 text-sm">
         {Icon && <Icon className="size-4 text-muted-foreground" />}
         {value}

@@ -9,7 +9,7 @@ import {
 } from "date-fns";
 
 export function formatDate(timestamp?: number | null) {
-  if (!timestamp) {
+  if (timestamp === undefined || timestamp === null) {
     return "No date";
   }
 
@@ -17,7 +17,7 @@ export function formatDate(timestamp?: number | null) {
 }
 
 export function formatDateTime(timestamp?: number | null) {
-  if (!timestamp) {
+  if (timestamp === undefined || timestamp === null) {
     return "No date";
   }
 
@@ -25,7 +25,7 @@ export function formatDateTime(timestamp?: number | null) {
 }
 
 export function formatDateInputValue(timestamp?: number | null) {
-  if (!timestamp) {
+  if (timestamp === undefined || timestamp === null) {
     return "";
   }
 
@@ -33,7 +33,7 @@ export function formatDateInputValue(timestamp?: number | null) {
 }
 
 export function formatTimeInputValue(timestamp?: number | null) {
-  if (!timestamp) {
+  if (timestamp === undefined || timestamp === null) {
     return "";
   }
 
@@ -41,7 +41,7 @@ export function formatTimeInputValue(timestamp?: number | null) {
 }
 
 export function formatDateTimeInputValue(timestamp?: number | null) {
-  if (!timestamp) {
+  if (timestamp === undefined || timestamp === null) {
     return "";
   }
 
@@ -64,13 +64,7 @@ export function parseLocalDateTime(dateValue: string, timeValue: string) {
   const [year, month, day] = dateValue.split("-").map(Number);
   const [hours, minutes] = timeValue.split(":").map(Number);
 
-  if (
-    !year ||
-    !month ||
-    !day ||
-    Number.isNaN(hours) ||
-    Number.isNaN(minutes)
-  ) {
+  if (!year || !month || !day || Number.isNaN(hours) || Number.isNaN(minutes)) {
     return undefined;
   }
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { EntityCollection } from "@/components/shared/entity-collection";
 import { use, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { ArrowLeft, CheckCircle2, Trash2 } from "lucide-react";
@@ -44,7 +45,9 @@ export default function ShoppingListDetailPage({
   const updateList = useMutation(api.shopping.updateList);
   const deleteList = useMutation(api.shopping.deleteList);
   const [showChecked, setShowChecked] = useState(true);
-  const [itemToDelete, setItemToDelete] = useState<Doc<"shoppingItems"> | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<Doc<"shoppingItems"> | null>(
+    null,
+  );
   const [clearCompletedOpen, setClearCompletedOpen] = useState(false);
   const [deleteListOpen, setDeleteListOpen] = useState(false);
   const [deletePending, setDeletePending] = useState(false);
@@ -90,7 +93,9 @@ export default function ShoppingListDetailPage({
       });
       setItemToDelete(null);
     } catch (caught) {
-      setDeleteError(caught instanceof Error ? caught.message : "Could not delete item.");
+      setDeleteError(
+        caught instanceof Error ? caught.message : "Could not delete item.",
+      );
     } finally {
       setDeletePending(false);
     }
@@ -107,7 +112,11 @@ export default function ShoppingListDetailPage({
       });
       setClearCompletedOpen(false);
     } catch (caught) {
-      setDeleteError(caught instanceof Error ? caught.message : "Could not clear completed items.");
+      setDeleteError(
+        caught instanceof Error
+          ? caught.message
+          : "Could not clear completed items.",
+      );
     } finally {
       setDeletePending(false);
     }
@@ -125,7 +134,9 @@ export default function ShoppingListDetailPage({
       setDeleteListOpen(false);
       router.push("/shopping");
     } catch (caught) {
-      setDeleteError(caught instanceof Error ? caught.message : "Could not delete list.");
+      setDeleteError(
+        caught instanceof Error ? caught.message : "Could not delete list.",
+      );
     } finally {
       setDeletePending(false);
     }
@@ -207,47 +218,65 @@ export default function ShoppingListDetailPage({
         <ShoppingItemInlineForm onSubmit={handleAddItem} />
       </div>
 
-      <div className="mt-6 space-y-2">
-        <AnimatePresence>
-          {uncheckedItems.map((item) => (
-            <ShoppingItemRow
-              key={item._id}
-              item={item}
-              onToggle={handleToggleItem}
-              onDelete={requestDeleteItem}
-            />
-          ))}
-        </AnimatePresence>
-      </div>
+      <EntityCollection
+        items={items.map((item) => ({
+          ...item,
+          status: item.checked ? "completed" : "remaining",
+        }))}
+        date={(item) => item.createdAt}
+        dateLabel="Added"
+      >
+        {(visible) => (
+          <>
+            <div className="mt-6 space-y-2">
+              <AnimatePresence>
+                {visible
+                  .filter((item) => !item.checked)
+                  .map((item) => (
+                    <ShoppingItemRow
+                      key={item._id}
+                      item={item}
+                      onToggle={handleToggleItem}
+                      onDelete={requestDeleteItem}
+                    />
+                  ))}
+              </AnimatePresence>
+            </div>
 
-      {checkedItems.length > 0 && (
-        <div className="mt-6">
-          <button
-            onClick={() => setShowChecked(!showChecked)}
-            className="flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <CheckCircle2 className="size-4" />
-            Completed ({checkedItems.length})
-          </button>
-          {showChecked && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="mt-2 space-y-2"
-            >
-              {checkedItems.map((item) => (
-                <ShoppingItemRow
-                  key={item._id}
-                  item={item}
-                  onToggle={handleToggleItem}
-                  onDelete={requestDeleteItem}
-                />
-              ))}
-            </motion.div>
-          )}
-        </div>
-      )}
+            {checkedItems.length > 0 && (
+              <div className="mt-6">
+                <button
+                  onClick={() => setShowChecked(!showChecked)}
+                  className="flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  <CheckCircle2 className="size-4" />
+                  Completed ({checkedItems.length})
+                </button>
+                {showChecked && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="mt-2 space-y-2"
+                  >
+                    {visible
+                      .filter((item) => item.checked)
+                      .map((item) => (
+                        <ShoppingItemRow
+                          key={item._id}
+                          item={item}
+                          onToggle={handleToggleItem}
+                          onDelete={requestDeleteItem}
+                        />
+                      ))}
+                  </motion.div>
+                )}
+              </div>
+            )}
+          </>
+        )}
+      </EntityCollection>
+
       <ConfirmDialog
         open={Boolean(itemToDelete)}
         onOpenChange={(open) => {

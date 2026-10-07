@@ -1,10 +1,15 @@
 "use client";
 
+import {
+  EntityForm,
+  useSavedForm,
+  OptionalFields,
+} from "@/components/shared/entity-form";
+
 import { FormEvent, useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
 
-
-import type { Doc, Id} from "@/convex/_generated/dataModel";
+import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -52,8 +57,11 @@ export function EventForm({
   submitLabel: string;
   onSubmit: (values: EventFormSubmitValues) => Promise<void>;
 }) {
+  const saved = useSavedForm();
   const [title, setTitle] = useState(initialEvent?.title ?? "");
-  const [description, setDescription] = useState(initialEvent?.description ?? "");
+  const [description, setDescription] = useState(
+    initialEvent?.description ?? "",
+  );
   const [note, setNote] = useState(initialEvent?.note ?? "");
   const [date, setDate] = useState(
     formatDateInputValue(initialEvent?.startsAt),
@@ -81,14 +89,16 @@ export function EventForm({
 
   const memberOptions = useMemo(
     () =>
-      members.filter((member): member is typeof member & { user: Doc<"users"> } =>
-        Boolean(member.user),
+      members.filter(
+        (member): member is typeof member & { user: Doc<"users"> } =>
+          Boolean(member.user),
       ),
     [members],
   );
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (pending) return;
     setPending(true);
     setError(null);
 
@@ -120,9 +130,8 @@ export function EventForm({
     const startsAt = isAllDay
       ? parseLocalDate(date, "00:00")
       : parseLocalDateTime(date, startTime);
-    const endsAt = !isAllDay && endTime
-      ? parseLocalDateTime(date, endTime)
-      : undefined;
+    const endsAt =
+      !isAllDay && endTime ? parseLocalDateTime(date, endTime) : undefined;
 
     if (startsAt === undefined) {
       setError("Choose a valid event date.");
@@ -147,17 +156,22 @@ export function EventForm({
         location: parsed.data.location,
         status,
         ownerUserId:
-          ownerUserId === "unassigned" ? undefined : (ownerUserId as Id<"users">),
+          ownerUserId === "unassigned"
+            ? undefined
+            : (ownerUserId as Id<"users">),
       });
+      saved();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not save event.");
+      setError(
+        caught instanceof Error ? caught.message : "Could not save event.",
+      );
     } finally {
       setPending(false);
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="grid gap-4">
+    <EntityForm onSubmit={handleSubmit} pending={pending} error={error}>
       <div className="grid gap-2">
         <Label htmlFor="event-title">Title</Label>
         <Input
@@ -169,32 +183,11 @@ export function EventForm({
         />
       </div>
 
-      <div className="grid gap-2">
-        <Label htmlFor="event-description">Description</Label>
-        <Textarea
-          id="event-description"
-          value={description}
-          onChange={(event) => setDescription(event.target.value)}
-          placeholder="Add context or details about the event."
-          rows={2}
-        />
-      </div>
-
-      <div className="grid gap-2">
-        <Label htmlFor="event-note">Note</Label>
-        <Textarea
-          id="event-note"
-          value={note}
-          onChange={(event) => setNote(event.target.value)}
-          placeholder="Add a personal note or reminder."
-          rows={2}
-        />
-      </div>
-
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="grid gap-2">
-          <Label>Date</Label>
+          <Label htmlFor="event-date">Date</Label>
           <DatePicker
+            id="event-date"
             value={date}
             onChange={setDate}
             required
@@ -203,9 +196,14 @@ export function EventForm({
         </div>
 
         <div className="grid gap-2">
-          <Label>Status</Label>
-          <Select value={status} onValueChange={(value) => setStatus(value as Doc<"events">["status"])}>
-            <SelectTrigger>
+          <Label htmlFor="event-status">Status</Label>
+          <Select
+            value={status}
+            onValueChange={(value) =>
+              setStatus(value as Doc<"events">["status"])
+            }
+          >
+            <SelectTrigger id="event-status">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -219,9 +217,9 @@ export function EventForm({
         </div>
 
         <div className="grid gap-2">
-          <Label>Owner</Label>
+          <Label htmlFor="event-owner">Owner</Label>
           <Select value={ownerUserId} onValueChange={setOwnerUserId}>
-            <SelectTrigger>
+            <SelectTrigger id="event-owner">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -253,8 +251,9 @@ export function EventForm({
       {!isAllDay && (
         <div className="grid gap-4 rounded-2xl border bg-muted/20 p-4 sm:grid-cols-2">
           <div className="grid gap-2">
-            <Label>Start time</Label>
+            <Label htmlFor="event-start-time">Start time</Label>
             <TimePicker
+              id="event-start-time"
               value={startTime}
               onChange={setStartTime}
               placeholder="Start time"
@@ -263,8 +262,9 @@ export function EventForm({
             />
           </div>
           <div className="grid gap-2">
-            <Label>End time</Label>
+            <Label htmlFor="event-end-time">End time</Label>
             <TimePicker
+              id="event-end-time"
               value={endTime}
               onChange={setEndTime}
               placeholder="Optional end time"
@@ -290,8 +290,34 @@ export function EventForm({
         </label>
       </div>
 
+      <OptionalFields>
+        <div className="grid gap-2">
+          <Label htmlFor="event-description">Description</Label>
+          <Textarea
+            id="event-description"
+            value={description}
+            onChange={(event) => setDescription(event.target.value)}
+            placeholder="Add context or details about the event."
+            rows={2}
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="event-note">Note</Label>
+          <Textarea
+            id="event-note"
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+            placeholder="Add a personal note or reminder."
+            rows={2}
+          />
+        </div>
+      </OptionalFields>
+
       {error && (
-        <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+        <p
+          role="alert"
+          className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+        >
           {error}
         </p>
       )}
@@ -300,6 +326,6 @@ export function EventForm({
         {pending && <Loader2 className="size-4 animate-spin" />}
         {submitLabel}
       </Button>
-    </form>
+    </EntityForm>
   );
 }

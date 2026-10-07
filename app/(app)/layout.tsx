@@ -67,7 +67,7 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
     const hasHouseholds = onboardingState.households.length > 0;
     const hasCompletedProfile = Boolean(
       onboardingState.user?.profileSetupCompletedAt ||
-        (hasHouseholds && hasUsableDisplayName(onboardingState.user?.name)),
+      (hasHouseholds && hasUsableDisplayName(onboardingState.user?.name)),
     );
     const needsProfileSetup = !hasCompletedProfile;
     const onboardingMode =
@@ -83,11 +83,7 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
       return;
     }
 
-    if (
-      !needsProfileSetup &&
-      !hasHouseholds &&
-      pathname !== "/onboarding"
-    ) {
+    if (!needsProfileSetup && !hasHouseholds && pathname !== "/onboarding") {
       router.replace("/onboarding");
       return;
     }
@@ -135,7 +131,9 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
         <section className="min-w-0 bg-background">
           <AppHeader />
           <div className="pb-24 lg:pb-0">
-            {children}
+            <div key={onboardingState.household._id} className="min-w-0">
+              {children}
+            </div>
           </div>
           <MobileNav />
         </section>

@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 
-import { formatCurrency } from "@/lib/formatters";
+import { useCurrencyFormatter } from "@/lib/use-currency-formatter";
 
 const categoryColors: Record<string, string> = {
   Groceries: "bg-chart-1",
@@ -26,6 +26,7 @@ export function CategoryBreakdown({
 }: {
   data: { category: string; amount: number }[];
 }) {
+  const formatCurrency = useCurrencyFormatter();
   if (data.length === 0) {
     return (
       <div className="rounded-xl border border-dashed bg-muted/30 p-6 text-center text-sm text-muted-foreground">

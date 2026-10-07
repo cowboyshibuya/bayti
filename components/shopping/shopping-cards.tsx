@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { EntityEditButton } from "@/components/shared/entity-edit-button";
 import { ShoppingCart, Trash2 } from "lucide-react";
 import { motion } from "framer-motion";
-
 
 import type { Doc } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
@@ -33,36 +33,34 @@ export function ShoppingItemRow({
       )}
     >
       <Checkbox
+        aria-label={`Mark ${item.name} ${item.checked ? "unchecked" : "checked"}`}
         checked={item.checked}
         onCheckedChange={() => onToggle?.(item)}
         className="shrink-0"
       />
-      <div className="min-w-0 flex-1">
+      <EntityEditButton entity={{ kind: "shoppingItem", value: item }}>
         <p
           className={cn(
-            "text-sm font-semibold text-foreground/88",
+            "text-sm font-semibold text-foreground",
             item.checked && "text-foreground/36 line-through",
           )}
         >
           {item.name}
         </p>
         {(item.quantity || item.category || item.note) && (
-          <p className="mt-0.5 text-xs text-foreground/40">
-            {[
-              item.quantity,
-              item.category,
-              item.note,
-            ]
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {[item.quantity, item.category, item.note]
               .filter(Boolean)
               .join(" · ")}
           </p>
         )}
-      </div>
+      </EntityEditButton>
       {onDelete && (
         <Button
           variant="ghost"
           size="icon-xs"
-          className="shrink-0 opacity-0 group-hover:opacity-100"
+          className="size-10 shrink-0"
+          aria-label={`Delete ${item.name}`}
           onClick={() => onDelete(item)}
         >
           <Trash2 className="size-3.5 text-muted-foreground" />
@@ -81,24 +79,33 @@ export function ShoppingListCard({
   itemCount: number;
   checkedCount: number;
 }) {
-  const progress = itemCount > 0 ? Math.round((checkedCount / itemCount) * 100) : 0;
+  const progress =
+    itemCount > 0 ? Math.round((checkedCount / itemCount) * 100) : 0;
 
   return (
-    <Link href={`/shopping/${list._id}`}>
-      <motion.div
-        whileHover={{ y: -1, boxShadow: "var(--shadow-card)" }}
-        className="rounded-3xl border border-border bg-card/90 p-5 shadow-[0_18px_55px_rgba(25,25,25,0.07)] transition-colors hover:border-foreground/14 hover:bg-muted/45 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_18px_50px_rgba(0,0,0,0.18)] dark:hover:border-white/[0.13] dark:hover:bg-white/[0.055]"
-      >
+    <div className="min-w-0">
+      <motion.div className="min-w-0 rounded-xl border border-border bg-card p-4 shadow-[0_18px_55px_rgba(25,25,25,0.07)] transition-colors hover:border-foreground/14 hover:bg-muted/45 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_18px_50px_rgba(0,0,0,0.18)] dark:hover:border-white/[0.13] dark:hover:bg-white/[0.055]">
         <div className="flex items-center gap-3">
           <div className="flex size-10 items-center justify-center rounded-2xl bg-accent/12">
             <ShoppingCart className="size-5 text-accent" />
           </div>
-          <div className="min-w-0 flex-1">
-            <h3 className="truncate font-semibold text-foreground/88">{list.name}</h3>
-            <p className="text-xs text-foreground/42">
+          <EntityEditButton
+            entity={{ kind: "shoppingList", value: list }}
+            href={`/shopping/${list._id}`}
+          >
+            <h3 className="min-w-0 flex-1 truncate font-semibold text-foreground">
+              {list.name}
+            </h3>
+            <p className="text-xs text-muted-foreground">
               {checkedCount} / {itemCount} items
             </p>
-          </div>
+          </EntityEditButton>
+          <Link
+            href={`/shopping/${list._id}`}
+            className="shrink-0 rounded-lg px-2 py-2 text-sm font-medium hover:underline focus-visible:outline-2"
+          >
+            Open list
+          </Link>
         </div>
         {itemCount > 0 && (
           <div className="mt-4">
@@ -111,6 +118,6 @@ export function ShoppingListCard({
           </div>
         )}
       </motion.div>
-    </Link>
+    </div>
   );
 }

@@ -2,12 +2,14 @@
 
 import { useMutation, useQuery } from "convex/react";
 import { Plus } from "lucide-react";
-import { AnimatePresence } from "framer-motion";
 
 import { Doc, Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
 import { LoadingState } from "@/components/shared/loading-state";
-import { BillForm, type BillFormSubmitValues } from "@/components/bills/bill-form";
+import {
+  BillForm,
+  type BillFormSubmitValues,
+} from "@/components/bills/bill-form";
 import { BillList } from "@/components/bills/bill-list";
 import { Button } from "@/components/ui/button";
 import {
@@ -56,6 +58,7 @@ export default function BillsPage() {
       provider: values.provider,
       amountExpected: values.amountExpected,
       currency: values.currency,
+      paidAt: values.paidAt,
       dueAt: values.dueAt,
       status: values.status,
       priority: values.priority,
@@ -73,9 +76,7 @@ export default function BillsPage() {
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-sm text-muted-foreground">
-            {household?.name}
-          </p>
+          <p className="text-sm text-muted-foreground">{household?.name}</p>
           <h1 className="text-2xl font-semibold">Bills</h1>
         </div>
         <Dialog>
@@ -85,11 +86,12 @@ export default function BillsPage() {
               Add bill
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-2xl">
+          <DialogContent className="sm:max-w-2xl">
             <DialogHeader>
               <DialogTitle>Add bill</DialogTitle>
               <DialogDescription>
-                Add a provider, amount, due date, priority, and household context.
+                Add a provider, amount, due date, priority, and household
+                context.
               </DialogDescription>
             </DialogHeader>
             <BillForm
@@ -109,18 +111,17 @@ export default function BillsPage() {
             </TabsTrigger>
           ))}
         </TabsList>
-        <AnimatePresence mode="wait">
-          {billViews.map((view) => (
-            <TabsContent key={view.value} value={view.value}>
-              <BillViewPanel
-                view={view.value}
-                householdId={currentHouseholdId}
-                members={members}
-                onMarkPaid={handleMarkPaid}
-              />
-            </TabsContent>
-          ))}
-        </AnimatePresence>
+
+        {billViews.map((view) => (
+          <TabsContent key={view.value} value={view.value}>
+            <BillViewPanel
+              view={view.value}
+              householdId={currentHouseholdId}
+              members={members}
+              onMarkPaid={handleMarkPaid}
+            />
+          </TabsContent>
+        ))}
       </Tabs>
     </div>
   );
@@ -153,6 +154,7 @@ function BillViewPanel({
   return (
     <BillList
       bills={bills}
+      dateMode={view === "paid" ? "paid" : "due"}
       emptyTitle={`No ${view} bills`}
       emptyDescription={
         view === "subscriptions"

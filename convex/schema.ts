@@ -23,6 +23,7 @@ export default defineSchema({
     .index("by_token_identifier", ["tokenIdentifier"]),
   households: defineTable({
     name: v.string(),
+    currency: v.optional(v.string()),
     createdByUserId: v.id("users"),
     inviteCode: v.string(),
     createdAt: v.number(),
@@ -453,4 +454,4 @@ export default defineSchema({
     .index("by_household", ["householdId"])
     .index("by_entity", ["entityType", "entityId"])
     .index("by_tag", ["tagId"]),
-})
+});

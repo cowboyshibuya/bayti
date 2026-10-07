@@ -32,7 +32,6 @@ import {
 import { EmptyState } from "@/components/shared/empty-state";
 import { LoadingState } from "@/components/shared/loading-state";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
-import { MemberDisplay, type MemberWithUser } from "@/components/shared/member-display";
 import { UserAvatar } from "../shared/user-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -84,7 +83,8 @@ type DocumentRow = {
   fileUrl: string | null;
 };
 
-type SortValue = "latest" | "name" | "expires" | "size";
+type SortValue =
+  "issued-asc" | "issued" | "latest" | "name" | "expires" | "size";
 
 const allFoldersValue = "all";
 const unfiledFolderValue = "unfiled";
@@ -116,8 +116,25 @@ function expiryVariant(
 
 function sortDocuments(documents: DocumentRow[], sort: SortValue) {
   return [...documents].sort((left, right) => {
+    if (sort === "issued" || sort === "issued-asc") {
+      const a = left.document.issuedAt,
+        b = right.document.issuedAt;
+      if (a === undefined || b === undefined)
+        return a === b
+          ? left.document._id.localeCompare(right.document._id)
+          : a === undefined
+            ? 1
+            : -1;
+      return (
+        (sort === "issued-asc" ? a - b : b - a) ||
+        left.document._id.localeCompare(right.document._id)
+      );
+    }
     if (sort === "name") {
-      return left.document.title.localeCompare(right.document.title);
+      return (
+        left.document.title.localeCompare(right.document.title) ||
+        left.document._id.localeCompare(right.document._id)
+      );
     }
 
     if (sort === "expires") {
@@ -131,7 +148,10 @@ function sortDocuments(documents: DocumentRow[], sort: SortValue) {
       return (right.document.sizeBytes ?? 0) - (left.document.sizeBytes ?? 0);
     }
 
-    return right.document.updatedAt - left.document.updatedAt;
+    return (
+      right.document.updatedAt - left.document.updatedAt ||
+      left.document._id.localeCompare(right.document._id)
+    );
   });
 }
 
@@ -139,19 +159,27 @@ export function DocumentsClient() {
   const searchParams = useSearchParams();
   const highlightedDocumentId = searchParams.get("document");
   const [nowTime] = useState(Date.now);
-  const { household } = useHousehold();
+  const { household, membership } = useHousehold();
+  const canEdit =
+    membership && ["admin", "adult", "child"].includes(membership.role);
   const householdId = household?._id;
 
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
   const [query, setQuery] = useState("");
   const [folderFilter, setFolderFilter] = useState<string>(allFoldersValue);
   const [typeFilter, setTypeFilter] = useState<DocumentType | "all">("all");
-  const [sort, setSort] = useState<SortValue>("latest");
+  const [sort, setSort] = useState<SortValue>("issued");
   const [documentDialogOpen, setDocumentDialogOpen] = useState(false);
   const [folderDialogOpen, setFolderDialogOpen] = useState(false);
-  const [editingDocument, setEditingDocument] = useState<Doc<"documents"> | null>(null);
-  const [editingFolder, setEditingFolder] = useState<Doc<"documentFolders"> | null>(null);
-  const [documentToDelete, setDocumentToDelete] = useState<Doc<"documents"> | null>(null);
-  const [folderToDelete, setFolderToDelete] = useState<Doc<"documentFolders"> | null>(null);
+  const [editingDocument, setEditingDocument] =
+    useState<Doc<"documents"> | null>(null);
+  const [editingFolder, setEditingFolder] =
+    useState<Doc<"documentFolders"> | null>(null);
+  const [documentToDelete, setDocumentToDelete] =
+    useState<Doc<"documents"> | null>(null);
+  const [folderToDelete, setFolderToDelete] =
+    useState<Doc<"documentFolders"> | null>(null);
   const [deletePending, setDeletePending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -173,6 +201,9 @@ export function DocumentsClient() {
           documentType: typeFilter,
           query,
           limit: 250,
+          sort,
+          issuedFrom: from ? new Date(`${from}T00:00`).getTime() : undefined,
+          issuedTo: to ? new Date(`${to}T23:59:59.999`).getTime() : undefined,
         }
       : "skip",
   );
@@ -186,7 +217,8 @@ export function DocumentsClient() {
   const removeFolder = useMutation(api.documentFolders.remove);
 
   const folders = useMemo(
-    () => foldersResult?.folders.map((item) => item.folder).filter(Boolean) ?? [],
+    () =>
+      foldersResult?.folders.map((item) => item.folder).filter(Boolean) ?? [],
     [foldersResult],
   ) as Doc<"documentFolders">[];
 
@@ -275,7 +307,9 @@ export function DocumentsClient() {
       });
       setEditingDocument(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not update document.");
+      setError(
+        err instanceof Error ? err.message : "Could not update document.",
+      );
       throw err;
     }
   }
@@ -322,9 +356,13 @@ export function DocumentsClient() {
         householdId: currentHouseholdId,
         documentId: documentToDelete._id,
       });
+      if (editingDocument?._id === documentToDelete._id)
+        setEditingDocument(null);
       setDocumentToDelete(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not delete document.");
+      setError(
+        err instanceof Error ? err.message : "Could not delete document.",
+      );
     } finally {
       setDeletePending(false);
     }
@@ -356,7 +394,10 @@ export function DocumentsClient() {
   }
 
   return (
-    <div className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6">
+    <div
+      key={householdId}
+      className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6"
+    >
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-sm text-muted-foreground">{household?.name}</p>
@@ -380,22 +421,29 @@ export function DocumentsClient() {
                   Group documents by policy, person, provider, or project.
                 </DialogDescription>
               </DialogHeader>
-              <FolderForm submitLabel="Create folder" onSubmit={handleCreateFolder} />
+              <FolderForm
+                submitLabel="Create folder"
+                onSubmit={handleCreateFolder}
+              />
             </DialogContent>
           </Dialog>
 
-          <Dialog open={documentDialogOpen} onOpenChange={setDocumentDialogOpen}>
+          <Dialog
+            open={documentDialogOpen}
+            onOpenChange={setDocumentDialogOpen}
+          >
             <DialogTrigger asChild>
               <Button>
                 <Plus className="size-4" />
                 New document
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-2xl">
+            <DialogContent className="sm:max-w-2xl">
               <DialogHeader>
                 <DialogTitle>New document</DialogTitle>
                 <DialogDescription>
-                  Upload a file or save a document record to track important dates.
+                  Upload a file or save a document record to track important
+                  dates.
                 </DialogDescription>
               </DialogHeader>
               <DocumentForm
@@ -408,6 +456,16 @@ export function DocumentsClient() {
         </div>
       </div>
 
+      <p role="status" className="text-sm text-muted-foreground">
+        {sortedDocuments.length} results
+        {query ||
+        from ||
+        to ||
+        typeFilter !== "all" ||
+        folderFilter !== allFoldersValue
+          ? " · Filters active"
+          : ""}
+      </p>
       {error && (
         <div className="rounded-2xl border border-destructive/25 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {error}
@@ -417,7 +475,9 @@ export function DocumentsClient() {
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="rounded-xl border bg-card p-4 [box-shadow:var(--shadow-card)]">
           <p className="text-xs text-muted-foreground">Documents</p>
-          <p className="mt-1 text-2xl font-semibold">{sortedDocuments.length}</p>
+          <p className="mt-1 text-2xl font-semibold">
+            {sortedDocuments.length}
+          </p>
         </div>
         <div className="rounded-xl border bg-card p-4 [box-shadow:var(--shadow-card)]">
           <p className="text-xs text-muted-foreground">Stored files</p>
@@ -430,17 +490,18 @@ export function DocumentsClient() {
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-64 flex-1">
+        <div className="relative min-w-0 flex-[2_1_16rem]">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search documents..."
+            aria-label="Search documents"
+            placeholder="Search documents…"
             className="pl-9"
           />
         </div>
         <Select value={folderFilter} onValueChange={setFolderFilter}>
-          <SelectTrigger>
+          <SelectTrigger aria-label="Folder" className="flex-[1_1_10rem]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -455,9 +516,11 @@ export function DocumentsClient() {
         </Select>
         <Select
           value={typeFilter}
-          onValueChange={(value) => setTypeFilter(value as DocumentType | "all")}
+          onValueChange={(value) =>
+            setTypeFilter(value as DocumentType | "all")
+          }
         >
-          <SelectTrigger>
+          <SelectTrigger aria-label="Type" className="flex-[1_1_10rem]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -469,17 +532,63 @@ export function DocumentsClient() {
             ))}
           </SelectContent>
         </Select>
-        <Select value={sort} onValueChange={(value) => setSort(value as SortValue)}>
-          <SelectTrigger>
+        <Select
+          value={sort}
+          onValueChange={(value) => setSort(value as SortValue)}
+        >
+          <SelectTrigger aria-label="Sort by" className="flex-[1_1_10rem]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="latest">Sort: Latest</SelectItem>
+            <SelectItem value="issued">Issued: latest first</SelectItem>
+            <SelectItem value="issued-asc">Issued: earliest first</SelectItem>
+            <SelectItem value="latest">Sort: Recently updated</SelectItem>
             <SelectItem value="name">Sort: Name</SelectItem>
             <SelectItem value="expires">Sort: Expiry</SelectItem>
             <SelectItem value="size">Sort: Size</SelectItem>
           </SelectContent>
         </Select>
+        <label className="grid min-w-0 flex-[1_1_9rem] gap-1 text-xs">
+          Issued from
+          <Input
+            aria-label="Issued from"
+            type="date"
+            className="text-base sm:text-sm"
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+          />
+        </label>
+        <label className="grid min-w-0 flex-[1_1_9rem] gap-1 text-xs">
+          Issued to
+          <Input
+            aria-label="Issued to"
+            type="date"
+            className="text-base sm:text-sm"
+            value={to}
+            min={from}
+            onChange={(e) => setTo(e.target.value)}
+          />
+        </label>
+        {(query ||
+          from ||
+          to ||
+          typeFilter !== "all" ||
+          folderFilter !== allFoldersValue ||
+          sort !== "issued") && (
+          <Button
+            variant="ghost"
+            onClick={() => {
+              setQuery("");
+              setFrom("");
+              setTo("");
+              setSort("issued");
+              setTypeFilter("all");
+              setFolderFilter(allFoldersValue);
+            }}
+          >
+            Clear filters
+          </Button>
+        )}
       </div>
 
       <section className="grid gap-3">
@@ -593,7 +702,8 @@ export function DocumentsClient() {
                     {row.document.title}
                   </span>
                   <span className="block truncate text-xs text-muted-foreground">
-                    {formatDate(row.document.updatedAt)} · {formatSize(row.document.sizeBytes)}
+                    {formatDate(row.document.updatedAt)} ·{" "}
+                    {formatSize(row.document.sizeBytes)}
                   </span>
                 </span>
               </button>
@@ -611,133 +721,251 @@ export function DocumentsClient() {
             description="Upload a file or save a document record to start the shared family library."
           />
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Folder</TableHead>
-                <TableHead>Uploaded by</TableHead>
-                <TableHead>Vendor</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Issued</TableHead>
-                <TableHead>Expires</TableHead>
-                <TableHead>Size</TableHead>
-                <TableHead className="w-12" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sortedDocuments.map((row) => {
-
-                const highlighted = highlightedDocumentId === row.document._id;
-                const uploaderName = row.uploadedBy?.name ?? row.uploadedBy?.email ?? "Family member";
-                return (
-                  <TableRow
-                    key={row.document._id}
-                    className={cn(highlighted && "bg-primary/5")}
+          <>
+            <div className="grid min-w-0 gap-3 sm:hidden">
+              {sortedDocuments.map((row) => (
+                <div
+                  key={row.document._id}
+                  className="min-w-0 rounded-xl border bg-card p-4"
+                >
+                  <button
+                    type="button"
+                    className="w-full min-w-0 text-left focus-visible:outline-2"
+                    aria-label={`${canEdit ? "Edit" : "View"} ${row.document.title}`}
+                    onClick={() => {
+                      if (canEdit) setEditingDocument(row.document);
+                      else if (row.fileUrl)
+                        window.open(
+                          row.fileUrl,
+                          "_blank",
+                          "noopener,noreferrer",
+                        );
+                    }}
                   >
-                    <TableCell>
-                      <div className="flex min-w-52 items-center gap-3">
-                        <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
-                          <FileText className="size-4" />
-                        </span>
-                        <div className="min-w-0">
-                          <p className="truncate font-medium">{row.document.title}</p>
-                          <p className="truncate text-xs text-muted-foreground">
-                            {row.document.fileName ?? "Metadata only"}
-                          </p>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">
-                        {toTitleLabel(row.document.documentType)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{row.folder?.name ?? "Unfiled"}</TableCell>
-                    <TableCell>
-                      {/*<MemberDisplay
+                    <span className="block break-words font-semibold">
+                      {row.document.title}
+                    </span>
+                    <span className="mt-1 block text-sm text-muted-foreground">
+                      {toTitleLabel(row.document.documentType)} · Issued{" "}
+                      {formatDate(row.document.issuedAt)}
+                    </span>
+                  </button>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <Badge
+                      variant={expiryVariant(row.document.expiresAt, nowTime)}
+                    >
+                      Expires {formatDate(row.document.expiresAt)}
+                    </Badge>
+                    {row.document.amount !== undefined && (
+                      <span className="ml-auto text-sm font-semibold tabular-nums">
+                        {formatCurrency(
+                          row.document.amount,
+                          row.document.currency ?? "EUR",
+                        )}
+                      </span>
+                    )}
+                    {row.fileUrl && (
+                      <a
+                        href={row.fileUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="rounded-lg px-2 py-2 text-sm font-medium underline"
+                      >
+                        Open file
+                      </a>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setDocumentToDelete(row.document)}
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="hidden min-w-0 sm:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Folder</TableHead>
+                    <TableHead>Uploaded by</TableHead>
+                    <TableHead>Vendor</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Issued</TableHead>
+                    <TableHead>Expires</TableHead>
+                    <TableHead>Size</TableHead>
+                    <TableHead className="w-12" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sortedDocuments.map((row) => {
+                    const highlighted =
+                      highlightedDocumentId === row.document._id;
+                    const uploaderName =
+                      row.uploadedBy?.name ??
+                      row.uploadedBy?.email ??
+                      "Family member";
+                    return (
+                      <TableRow
+                        key={row.document._id}
+                        className={cn(highlighted && "bg-primary/5")}
+                      >
+                        <TableCell>
+                          <div className="flex min-w-52 items-center gap-3">
+                            <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                              <FileText className="size-4" />
+                            </span>
+                            <div className="min-w-0">
+                              <button
+                                type="button"
+                                className="max-w-full truncate text-left font-medium hover:underline focus-visible:outline-2"
+                                aria-label={`${canEdit ? "Edit" : "View"} ${row.document.title}`}
+                                onClick={() => {
+                                  if (canEdit) setEditingDocument(row.document);
+                                  else if (row.fileUrl)
+                                    window.open(
+                                      row.fileUrl,
+                                      "_blank",
+                                      "noopener,noreferrer",
+                                    );
+                                }}
+                              >
+                                {row.document.title}
+                              </button>
+                              <p className="truncate text-xs text-muted-foreground">
+                                {row.document.fileName ?? "Metadata only"}
+                              </p>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="secondary">
+                            {toTitleLabel(row.document.documentType)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{row.folder?.name ?? "Unfiled"}</TableCell>
+                        <TableCell>
+                          {/*<MemberDisplay
                         member={member}
                         avatarClassName="size-6"
                         className="min-w-36"
                       />*/}
-                      <span className="flex min-w-36 items-center gap-2">
-                        <UserAvatar
-                          name={uploaderName}
-                          imageUrl={row.uploadedBy?.image}
-                          className="size-6"
-                        />
-                        <span className="truncate text-sm font-medium">
-                          {uploaderName}
-                        </span>
-                      </span>
-                    </TableCell>
-                    <TableCell>{row.document.vendor ?? "—"}</TableCell>
-                    <TableCell>
-                      {row.document.amount !== undefined
-                        ? formatCurrency(row.document.amount, row.document.currency)
-                        : "—"}
-                    </TableCell>
-                    <TableCell>{formatDate(row.document.issuedAt)}</TableCell>
-                    <TableCell>
-                      {row.document.expiresAt ? (
-                        <Badge variant={expiryVariant(row.document.expiresAt, nowTime)}>
-                          {formatDate(row.document.expiresAt)}
-                        </Badge>
-                      ) : (
-                        "—"
-                      )}
-                    </TableCell>
-                    <TableCell>{formatSize(row.document.sizeBytes)}</TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon-sm" animated={false}>
-                            <MoreHorizontal className="size-4" />
-                            <span className="sr-only">Document actions</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            disabled={!row.fileUrl}
-                            onClick={() =>
-                              row.fileUrl &&
-                              window.open(row.fileUrl, "_blank", "noopener,noreferrer")
-                            }
-                          >
-                            <Download className="size-4" />
-                            Open file
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setEditingDocument(row.document)}>
-                            <Edit2 className="size-4" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            variant="destructive"
-                            onClick={() => {
-                              setError(null);
-                              setDocumentToDelete(row.document);
-                            }}
-                          >
-                            <Trash2 className="size-4" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+                          <span className="flex min-w-36 items-center gap-2">
+                            <UserAvatar
+                              name={uploaderName}
+                              imageUrl={row.uploadedBy?.image}
+                              className="size-6"
+                            />
+                            <span className="truncate text-sm font-medium">
+                              {uploaderName}
+                            </span>
+                          </span>
+                        </TableCell>
+                        <TableCell>{row.document.vendor ?? "—"}</TableCell>
+                        <TableCell>
+                          {row.document.amount !== undefined
+                            ? formatCurrency(
+                                row.document.amount,
+                                row.document.currency,
+                              )
+                            : "—"}
+                        </TableCell>
+                        <TableCell>
+                          {formatDate(row.document.issuedAt)}
+                        </TableCell>
+                        <TableCell>
+                          {row.document.expiresAt ? (
+                            <Badge
+                              variant={expiryVariant(
+                                row.document.expiresAt,
+                                nowTime,
+                              )}
+                            >
+                              {formatDate(row.document.expiresAt)}
+                            </Badge>
+                          ) : (
+                            "—"
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {formatSize(row.document.sizeBytes)}
+                        </TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                animated={false}
+                              >
+                                <MoreHorizontal className="size-4" />
+                                <span className="sr-only">
+                                  Document actions
+                                </span>
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                disabled={!row.fileUrl}
+                                onClick={() =>
+                                  row.fileUrl &&
+                                  window.open(
+                                    row.fileUrl,
+                                    "_blank",
+                                    "noopener,noreferrer",
+                                  )
+                                }
+                              >
+                                <Download className="size-4" />
+                                Open file
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  if (canEdit) setEditingDocument(row.document);
+                                  else if (row.fileUrl)
+                                    window.open(
+                                      row.fileUrl,
+                                      "_blank",
+                                      "noopener,noreferrer",
+                                    );
+                                }}
+                              >
+                                <Edit2 className="size-4" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                variant="destructive"
+                                onClick={() => {
+                                  setError(null);
+                                  setDocumentToDelete(row.document);
+                                }}
+                              >
+                                <Trash2 className="size-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </>
         )}
       </section>
 
       <Dialog
         open={editingDocument !== null}
+        onDelete={() => setDocumentToDelete(editingDocument)}
         onOpenChange={(open) => !open && setEditingDocument(null)}
       >
-        <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-2xl">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Edit document</DialogTitle>
             <DialogDescription>

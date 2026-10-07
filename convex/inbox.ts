@@ -19,7 +19,8 @@ const inboxViewValidator = v.union(
 
 type InboxSeverity = "overdue" | "today" | "due_soon" | "upcoming";
 type InboxKind = "task" | "bill" | "event" | "document" | "reminder";
-type InboxView = "all" | "mine" | "overdue" | "due_soon" | "today" | "reminders";
+type InboxView =
+  "all" | "mine" | "overdue" | "due_soon" | "today" | "reminders";
 
 type InboxItem = {
   id: string;
@@ -74,7 +75,11 @@ function shouldIncludeMine(
   );
 }
 
-function matchesView(item: InboxItem, view: InboxView, currentUserId: Id<"users">) {
+function matchesView(
+  item: InboxItem,
+  view: InboxView,
+  currentUserId: Id<"users">,
+) {
   if (view === "all") return true;
   if (view === "mine") return shouldIncludeMine(item, currentUserId);
   if (view === "reminders") return item.kind === "reminder";
@@ -92,6 +97,12 @@ async function withUser(ctx: QueryCtx, item: Omit<InboxItem, "user">) {
   };
 }
 
+async function readRows<T>(rows: AsyncIterable<T>): Promise<T[]> {
+  const result: T[] = [];
+  for await (const row of rows) result.push(row);
+  return result;
+}
+
 async function buildInboxItems(
   ctx: QueryCtx,
   householdId: Id<"households">,
@@ -102,28 +113,33 @@ async function buildInboxItems(
   const windowEnd = nowTime + windowDays * MS_PER_DAY;
 
   const [tasks, bills, events, documents, reminders] = await Promise.all([
-    ctx.db
-      .query("tasks")
-      .withIndex("by_household", (q) => q.eq("householdId", householdId))
-      .take(200),
-    ctx.db
-      .query("bills")
-      .withIndex("by_household", (q) => q.eq("householdId", householdId))
-      .take(200),
-    ctx.db
-      .query("events")
-      .withIndex("by_household_starts", (q) =>
-        q.eq("householdId", householdId).gte("startsAt", todayStart),
-      )
-      .take(100),
-    ctx.db
-      .query("documents")
-      .withIndex("by_household", (q) => q.eq("householdId", householdId))
-      .take(100),
-    ctx.db
-      .query("reminders")
-      .withIndex("by_household", (q) => q.eq("householdId", householdId))
-      .take(100),
+    readRows(
+      ctx.db
+        .query("tasks")
+        .withIndex("by_household", (q) => q.eq("householdId", householdId)),
+    ),
+    readRows(
+      ctx.db
+        .query("bills")
+        .withIndex("by_household", (q) => q.eq("householdId", householdId)),
+    ),
+    readRows(
+      ctx.db
+        .query("events")
+        .withIndex("by_household_starts", (q) =>
+          q.eq("householdId", householdId).gte("startsAt", todayStart),
+        ),
+    ),
+    readRows(
+      ctx.db
+        .query("documents")
+        .withIndex("by_household", (q) => q.eq("householdId", householdId)),
+    ),
+    readRows(
+      ctx.db
+        .query("reminders")
+        .withIndex("by_household", (q) => q.eq("householdId", householdId)),
+    ),
   ]);
 
   const taskItems = tasks
@@ -258,7 +274,8 @@ async function buildInboxItems(
       due_soon: 2,
       upcoming: 3,
     };
-    const severityDiff = severityOrder[left.severity] - severityOrder[right.severity];
+    const severityDiff =
+      severityOrder[left.severity] - severityOrder[right.severity];
     if (severityDiff !== 0) return severityDiff;
     return left.dueAt - right.dueAt;
   });
@@ -270,6 +287,17 @@ export const list = query({
     view: v.optional(inboxViewValidator),
     windowDays: v.optional(v.number()),
     limit: v.optional(v.number()),
+    controls: v.optional(
+      v.object({
+        search: v.string(),
+        sort: v.string(),
+        filters: v.record(v.string(), v.string()),
+        from: v.string(),
+        to: v.string(),
+        fromAt: v.optional(v.number()),
+        toAt: v.optional(v.number()),
+      }),
+    ),
   },
   handler: async (ctx, args) => {
     const currentUser = await requireCurrentUser(ctx);
@@ -278,15 +306,48 @@ export const list = query({
     const view = args.view ?? "all";
     const windowDays = Math.max(1, Math.min(args.windowDays ?? 7, 60));
     const limit = Math.max(1, Math.min(args.limit ?? 50, 100));
-    const items = await buildInboxItems(
-      ctx,
-      args.householdId,
-      windowDays,
-    );
+    const items = await buildInboxItems(ctx, args.householdId, windowDays);
 
-    return items
-      .filter((item) => matchesView(item, view, currentUser._id))
-      .slice(0, limit);
+    const controls = args.controls;
+    const filtered = items.filter((item) => {
+      if (!matchesView(item, view, currentUser._id)) return false;
+      if (!controls) return true;
+      if (!item.title.toLowerCase().includes(controls.search.toLowerCase()))
+        return false;
+      if (controls.filters.status && item.status !== controls.filters.status)
+        return false;
+      if (
+        controls.filters.ownerUserId &&
+        (item.ownerUserId ?? "unassigned") !== controls.filters.ownerUserId
+      )
+        return false;
+      if (
+        controls.filters.targetUserId &&
+        (item.targetUserId ?? "unassigned") !== controls.filters.targetUserId
+      )
+        return false;
+      const from =
+        controls.fromAt ??
+        (controls.from
+          ? new Date(`${controls.from}T00:00`).getTime()
+          : -Infinity);
+      const to =
+        controls.toAt ??
+        (controls.to
+          ? new Date(`${controls.to}T23:59:59.999`).getTime()
+          : Infinity);
+      return item.dueAt >= from && item.dueAt <= to;
+    });
+    if (controls)
+      filtered.sort(
+        (a, b) =>
+          (controls.sort === "title"
+            ? a.title.localeCompare(b.title)
+            : controls.sort === "date-desc"
+              ? b.dueAt - a.dueAt
+              : a.dueAt - b.dueAt) || a.id.localeCompare(b.id),
+      );
+    return filtered.slice(0, limit);
   },
 });
 

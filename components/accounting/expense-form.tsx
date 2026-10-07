@@ -1,8 +1,15 @@
 "use client";
 
+import {
+  EntityForm,
+  useSavedForm,
+  OptionalFields,
+} from "@/components/shared/entity-form";
+
 import { FormEvent, useState } from "react";
 import { Loader2 } from "lucide-react";
 
+import { useHousehold } from "@/lib/household-context";
 import { Doc, Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +24,11 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { DatePicker } from "@/components/shared/date-picker";
 import { MemberDisplay } from "@/components/shared/member-display";
-import { DEFAULT_CURRENCY, EXPENSE_CATEGORIES, type ExpenseCategory } from "@/lib/constants";
+import {
+  DEFAULT_CURRENCY,
+  EXPENSE_CATEGORIES,
+  type ExpenseCategory,
+} from "@/lib/constants";
 import { formatDateInputValue, parseLocalDate } from "@/lib/dates";
 
 export type ExpenseFormSubmitValues = {
@@ -43,10 +54,15 @@ export function ExpenseForm({
   submitLabel: string;
   onSubmit: (values: ExpenseFormSubmitValues) => Promise<void>;
 }) {
+  const saved = useSavedForm();
   const [title, setTitle] = useState(initialExpense?.title ?? "");
   const [merchant, setMerchant] = useState(initialExpense?.merchant ?? "");
-  const [amount, setAmount] = useState<string>(initialExpense?.amount?.toString() ?? "");
-  const [currency, setCurrency] = useState(initialExpense?.currency ?? DEFAULT_CURRENCY);
+  const [amount, setAmount] = useState<string>(
+    initialExpense?.amount?.toString() ?? "",
+  );
+  const { household } = useHousehold();
+  const currency =
+    initialExpense?.currency ?? household?.currency ?? DEFAULT_CURRENCY;
   const [spentDate, setSpentDate] = useState(() =>
     initialExpense?.spentAt
       ? formatDateInputValue(initialExpense.spentAt)
@@ -55,7 +71,9 @@ export function ExpenseForm({
   const [category, setCategory] = useState<ExpenseCategory>(
     (initialExpense?.category as ExpenseCategory) ?? "Groceries",
   );
-  const [paymentMethod, setPaymentMethod] = useState(initialExpense?.paymentMethod ?? "");
+  const [paymentMethod, setPaymentMethod] = useState(
+    initialExpense?.paymentMethod ?? "",
+  );
   const [notes, setNotes] = useState(initialExpense?.notes ?? "");
   const [paidByUserId, setPaidByUserId] = useState<string>(
     initialExpense?.paidByUserId ?? "unassigned",
@@ -69,6 +87,7 @@ export function ExpenseForm({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (pending) return;
     setPending(true);
     setError(null);
 
@@ -103,17 +122,22 @@ export function ExpenseForm({
         paymentMethod: paymentMethod.trim() || undefined,
         notes: notes.trim() || undefined,
         paidByUserId:
-          paidByUserId === "unassigned" ? undefined : (paidByUserId as Id<"users">),
+          paidByUserId === "unassigned"
+            ? undefined
+            : (paidByUserId as Id<"users">),
       });
+      saved();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not save expense.");
+      setError(
+        caught instanceof Error ? caught.message : "Could not save expense.",
+      );
     } finally {
       setPending(false);
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="grid gap-4">
+    <EntityForm onSubmit={handleSubmit} pending={pending} error={error}>
       <div className="grid gap-2">
         <Label htmlFor="expense-title">Title</Label>
         <Input
@@ -125,18 +149,8 @@ export function ExpenseForm({
         />
       </div>
 
-      <div className="grid gap-2">
-        <Label htmlFor="expense-merchant">Merchant</Label>
-        <Input
-          id="expense-merchant"
-          value={merchant}
-          onChange={(e) => setMerchant(e.target.value)}
-          placeholder="e.g. Carrefour, Amazon"
-        />
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-3">
-        <div className="grid gap-2 sm:col-span-2">
+      <div className="grid gap-3">
+        <div className="grid gap-2">
           <Label htmlFor="expense-amount">Amount</Label>
           <Input
             id="expense-amount"
@@ -149,22 +163,13 @@ export function ExpenseForm({
             required
           />
         </div>
-        <div className="grid gap-2">
-          <Label htmlFor="expense-currency">Currency</Label>
-          <Input
-            id="expense-currency"
-            value={currency}
-            onChange={(e) => setCurrency(e.target.value.toUpperCase())}
-            placeholder="EUR"
-            maxLength={3}
-          />
-        </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-2 gap-3">
         <div className="grid gap-2">
-          <Label>Date</Label>
+          <Label htmlFor="expense-date">Date</Label>
           <DatePicker
+            id="expense-date"
             value={spentDate}
             onChange={setSpentDate}
             required
@@ -172,9 +177,12 @@ export function ExpenseForm({
           />
         </div>
         <div className="grid gap-2">
-          <Label>Category</Label>
-            <Select value={category} onValueChange={(v) => setCategory(v as ExpenseCategory)}>
-            <SelectTrigger>
+          <Label htmlFor="expense-category">Category</Label>
+          <Select
+            value={category}
+            onValueChange={(v) => setCategory(v as ExpenseCategory)}
+          >
+            <SelectTrigger id="expense-category">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -188,51 +196,66 @@ export function ExpenseForm({
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <OptionalFields>
         <div className="grid gap-2">
-          <Label htmlFor="expense-payment">Payment method</Label>
+          <Label htmlFor="expense-merchant">Merchant</Label>
           <Input
-            id="expense-payment"
-            value={paymentMethod}
-            onChange={(e) => setPaymentMethod(e.target.value)}
-            placeholder="e.g. Credit card, Cash"
+            id="expense-merchant"
+            value={merchant}
+            onChange={(e) => setMerchant(e.target.value)}
+            placeholder="e.g. Carrefour, Amazon"
           />
         </div>
-        <div className="grid gap-2">
-          <Label>Paid by</Label>
-          <Select value={paidByUserId} onValueChange={setPaidByUserId}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="unassigned">Unassigned</SelectItem>
-              {memberOptions.map((m) => (
-                <SelectItem key={m.user._id} value={m.user._id}>
-                  <MemberDisplay
-                    member={m}
-                    detail={m.user.email}
-                    avatarClassName="size-6"
-                  />
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
 
-      <div className="grid gap-2">
-        <Label htmlFor="expense-notes">Notes</Label>
-        <Textarea
-          id="expense-notes"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder="Any additional details..."
-          rows={2}
-        />
-      </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-2">
+            <Label htmlFor="expense-payment">Payment method</Label>
+            <Input
+              id="expense-payment"
+              value={paymentMethod}
+              onChange={(e) => setPaymentMethod(e.target.value)}
+              placeholder="e.g. Credit card, Cash"
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="expense-paid-by">Paid by</Label>
+            <Select value={paidByUserId} onValueChange={setPaidByUserId}>
+              <SelectTrigger id="expense-paid-by">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="unassigned">Unassigned</SelectItem>
+                {memberOptions.map((m) => (
+                  <SelectItem key={m.user._id} value={m.user._id}>
+                    <MemberDisplay
+                      member={m}
+                      detail={m.user.email}
+                      avatarClassName="size-6"
+                    />
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="grid gap-2">
+          <Label htmlFor="expense-notes">Notes</Label>
+          <Textarea
+            id="expense-notes"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Any additional details..."
+            rows={2}
+          />
+        </div>
+      </OptionalFields>
 
       {error && (
-        <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+        <p
+          role="alert"
+          className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+        >
           {error}
         </p>
       )}
@@ -241,6 +264,6 @@ export function ExpenseForm({
         {pending && <Loader2 className="size-4 animate-spin" />}
         {submitLabel}
       </Button>
-    </form>
+    </EntityForm>
   );
 }

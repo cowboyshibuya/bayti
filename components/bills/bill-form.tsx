@@ -1,8 +1,15 @@
 "use client";
 
+import {
+  EntityForm,
+  useSavedForm,
+  OptionalFields,
+} from "@/components/shared/entity-form";
+
 import { FormEvent, useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
 
+import { useHousehold } from "@/lib/household-context";
 import { Doc, Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -35,6 +42,7 @@ export type BillFormSubmitValues = {
   amountExpected?: number;
   currency: string;
   dueAt?: number;
+  paidAt?: number;
   status: Doc<"bills">["status"];
   priority: Doc<"bills">["priority"];
   ownerUserId?: Id<"users">;
@@ -43,6 +51,7 @@ export type BillFormSubmitValues = {
     frequency: Doc<"recurrenceRules">["frequency"];
     interval: number;
     startsAt: number;
+    endsAt?: number;
   } | null;
 };
 
@@ -59,15 +68,23 @@ export function BillForm({
   submitLabel: string;
   onSubmit: (values: BillFormSubmitValues) => Promise<void>;
 }) {
+  const saved = useSavedForm();
   const [title, setTitle] = useState(initialBill?.title ?? "");
-  const [description, setDescription] = useState(initialBill?.description ?? "");
+  const [description, setDescription] = useState(
+    initialBill?.description ?? "",
+  );
   const [provider, setProvider] = useState(initialBill?.provider ?? "");
   const [amountExpected, setAmountExpected] = useState<string>(
     initialBill?.amountExpected?.toString() ?? "",
   );
-  const [currency, setCurrency] = useState(initialBill?.currency ?? DEFAULT_CURRENCY);
+  const { household } = useHousehold();
+  const currency =
+    initialBill?.currency ?? household?.currency ?? DEFAULT_CURRENCY;
   const [status, setStatus] = useState<Doc<"bills">["status"]>(
     initialBill?.status ?? "upcoming",
+  );
+  const [paidDate, setPaidDate] = useState(
+    formatDateInputValue(initialBill?.paidAt),
   );
   const [priority, setPriority] = useState<Doc<"bills">["priority"]>(
     initialBill?.priority ?? "medium",
@@ -80,22 +97,25 @@ export function BillForm({
   );
   const [autopay, setAutopay] = useState(initialBill?.autopay ?? false);
   const [recurring, setRecurring] = useState(Boolean(initialRecurrence));
-  const [frequency, setFrequency] =
-    useState<Doc<"recurrenceRules">["frequency"]>(initialRecurrence?.frequency ?? "monthly");
+  const [frequency, setFrequency] = useState<
+    Doc<"recurrenceRules">["frequency"]
+  >(initialRecurrence?.frequency ?? "monthly");
   const [interval, setInterval] = useState(initialRecurrence?.interval ?? 1);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const memberOptions = useMemo(
     () =>
-      members.filter((member): member is typeof member & { user: Doc<"users"> } =>
-        Boolean(member.user),
+      members.filter(
+        (member): member is typeof member & { user: Doc<"users"> } =>
+          Boolean(member.user),
       ),
     [members],
   );
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (pending) return;
     setPending(true);
     setError(null);
 
@@ -129,6 +149,15 @@ export function BillForm({
       return;
     }
 
+    if (
+      status === "paid" &&
+      paidDate &&
+      parseLocalDate(paidDate) === undefined
+    ) {
+      setError("Choose a valid payment date.");
+      setPending(false);
+      return;
+    }
     try {
       await onSubmit({
         title: parsed.data.title,
@@ -137,30 +166,43 @@ export function BillForm({
         amountExpected: parsed.data.amountExpected,
         currency: parsed.data.currency,
         dueAt,
+        paidAt:
+          status === "paid"
+            ? (parseLocalDate(paidDate) ??
+              (initialBill?.status === "paid"
+                ? initialBill.paidAt
+                : Date.now()))
+            : undefined,
         status,
         priority,
         ownerUserId:
-          ownerUserId === "unassigned" ? undefined : (ownerUserId as Id<"users">),
+          ownerUserId === "unassigned"
+            ? undefined
+            : (ownerUserId as Id<"users">),
         autopay: parsed.data.autopay,
         recurrence: recurring
           ? {
               frequency,
               interval,
-              startsAt: dueAt!,
+              startsAt: initialRecurrence?.startsAt ?? dueAt!,
+              endsAt: initialRecurrence?.endsAt,
             }
           : initialBill
             ? null
             : undefined,
       });
+      saved();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not save bill.");
+      setError(
+        caught instanceof Error ? caught.message : "Could not save bill.",
+      );
     } finally {
       setPending(false);
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="grid gap-4">
+    <EntityForm onSubmit={handleSubmit} pending={pending} error={error}>
       <div className="grid gap-2">
         <Label htmlFor="bill-title">Title</Label>
         <Input
@@ -172,29 +214,8 @@ export function BillForm({
         />
       </div>
 
-      <div className="grid gap-2">
-        <Label htmlFor="bill-description">Description</Label>
-        <Textarea
-          id="bill-description"
-          value={description}
-          onChange={(event) => setDescription(event.target.value)}
-          placeholder="Add details, account numbers, or notes."
-          rows={2}
-        />
-      </div>
-
-      <div className="grid gap-2">
-        <Label htmlFor="bill-provider">Provider</Label>
-        <Input
-          id="bill-provider"
-          value={provider}
-          onChange={(event) => setProvider(event.target.value)}
-          placeholder="e.g. EDF, Vodafone, Insurance Co."
-        />
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-3">
-        <div className="grid gap-2 sm:col-span-2">
+      <div className="grid gap-4">
+        <div className="grid gap-2">
           <Label htmlFor="bill-amount">Amount expected</Label>
           <Input
             id="bill-amount"
@@ -206,31 +227,41 @@ export function BillForm({
             placeholder="0.00"
           />
         </div>
-        <div className="grid gap-2">
-          <Label htmlFor="bill-currency">Currency</Label>
-          <Input
-            id="bill-currency"
-            value={currency}
-            onChange={(event) => setCurrency(event.target.value.toUpperCase())}
-            placeholder="EUR"
-            maxLength={3}
-          />
-        </div>
       </div>
 
+      {status === "paid" && (
+        <div className="grid gap-2">
+          <Label htmlFor="bill-paid-date">Paid on</Label>
+          <DatePicker
+            id="bill-paid-date"
+            value={paidDate}
+            onChange={setPaidDate}
+            placeholder={
+              initialBill?.status === "paid" ? "Payment date unknown" : "Today"
+            }
+            allowClear={false}
+          />
+        </div>
+      )}
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="grid gap-2">
-          <Label>Due date</Label>
+          <Label htmlFor="bill-due-date">Due date</Label>
           <DatePicker
+            id="bill-due-date"
             value={dueDate}
             onChange={setDueDate}
           />
         </div>
 
         <div className="grid gap-2">
-          <Label>Status</Label>
-          <Select value={status} onValueChange={(value) => setStatus(value as Doc<"bills">["status"])}>
-            <SelectTrigger>
+          <Label htmlFor="bill-status">Status</Label>
+          <Select
+            value={status}
+            onValueChange={(value) =>
+              setStatus(value as Doc<"bills">["status"])
+            }
+          >
+            <SelectTrigger id="bill-status">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -244,9 +275,14 @@ export function BillForm({
         </div>
 
         <div className="grid gap-2">
-          <Label>Priority</Label>
-          <Select value={priority} onValueChange={(value) => setPriority(value as Doc<"bills">["priority"])}>
-            <SelectTrigger>
+          <Label htmlFor="bill-priority">Priority</Label>
+          <Select
+            value={priority}
+            onValueChange={(value) =>
+              setPriority(value as Doc<"bills">["priority"])
+            }
+          >
+            <SelectTrigger id="bill-priority">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -260,9 +296,9 @@ export function BillForm({
         </div>
 
         <div className="grid gap-2">
-          <Label>Owner</Label>
+          <Label htmlFor="bill-owner">Owner</Label>
           <Select value={ownerUserId} onValueChange={setOwnerUserId}>
-            <SelectTrigger>
+            <SelectTrigger id="bill-owner">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -302,9 +338,14 @@ export function BillForm({
         {recurring && (
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <div className="grid gap-2">
-              <Label>Frequency</Label>
-              <Select value={frequency} onValueChange={(value) => setFrequency(value as Doc<"recurrenceRules">["frequency"])}>
-                <SelectTrigger>
+              <Label htmlFor="bill-frequency">Frequency</Label>
+              <Select
+                value={frequency}
+                onValueChange={(value) =>
+                  setFrequency(value as Doc<"recurrenceRules">["frequency"])
+                }
+              >
+                <SelectTrigger id="bill-frequency">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -317,8 +358,9 @@ export function BillForm({
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label>Interval</Label>
+              <Label htmlFor="bill-interval">Interval</Label>
               <Input
+                id="bill-interval"
                 type="number"
                 min={1}
                 max={24}
@@ -330,8 +372,33 @@ export function BillForm({
         )}
       </div>
 
+      <OptionalFields>
+        <div className="grid gap-2">
+          <Label htmlFor="bill-description">Description</Label>
+          <Textarea
+            id="bill-description"
+            value={description}
+            onChange={(event) => setDescription(event.target.value)}
+            placeholder="Add details, account numbers, or notes."
+            rows={2}
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="bill-provider">Provider</Label>
+          <Input
+            id="bill-provider"
+            value={provider}
+            onChange={(event) => setProvider(event.target.value)}
+            placeholder="e.g. EDF, Vodafone, Insurance Co."
+          />
+        </div>
+      </OptionalFields>
+
       {error && (
-        <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+        <p
+          role="alert"
+          className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+        >
           {error}
         </p>
       )}
@@ -340,6 +407,6 @@ export function BillForm({
         {pending && <Loader2 className="size-4 animate-spin" />}
         {submitLabel}
       </Button>
-    </form>
+    </EntityForm>
   );
 }

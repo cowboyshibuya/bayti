@@ -1,5 +1,7 @@
 "use client";
 
+import { EntityForm, useSavedForm } from "@/components/shared/entity-form";
+
 import { useState } from "react";
 import { Loader2, Plus } from "lucide-react";
 
@@ -21,12 +23,14 @@ export function ShoppingListForm({
   submitLabel: string;
   onSubmit: (values: ShoppingListFormSubmitValues) => Promise<void>;
 }) {
+  const saved = useSavedForm();
   const [name, setName] = useState(initialName ?? "");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (pending) return;
     setPending(true);
     setError(null);
 
@@ -39,16 +43,19 @@ export function ShoppingListForm({
 
     try {
       await onSubmit({ name: parsed.data.name });
+      saved();
       if (!initialName) setName("");
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not save list.");
+      setError(
+        caught instanceof Error ? caught.message : "Could not save list.",
+      );
     } finally {
       setPending(false);
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="grid gap-4">
+    <EntityForm onSubmit={handleSubmit} pending={pending} error={error}>
       <div className="grid gap-2">
         <Label htmlFor="list-name">List name</Label>
         <Input
@@ -60,7 +67,10 @@ export function ShoppingListForm({
         />
       </div>
       {error && (
-        <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+        <p
+          role="alert"
+          className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+        >
           {error}
         </p>
       )}
@@ -68,7 +78,7 @@ export function ShoppingListForm({
         {pending && <Loader2 className="size-4 animate-spin" />}
         {submitLabel}
       </Button>
-    </form>
+    </EntityForm>
   );
 }
 
@@ -86,7 +96,10 @@ export function ShoppingItemInlineForm({
     if (!name.trim()) return;
     setPending(true);
     try {
-      await onSubmit({ name: name.trim(), quantity: quantity.trim() || undefined });
+      await onSubmit({
+        name: name.trim(),
+        quantity: quantity.trim() || undefined,
+      });
       setName("");
       setQuantity("");
     } finally {
@@ -114,5 +127,70 @@ export function ShoppingItemInlineForm({
         <Plus className="size-4" />
       </Button>
     </form>
+  );
+}
+
+export function ShoppingItemEditForm({
+  initialItem,
+  onSubmit,
+}: {
+  initialItem: import("@/convex/_generated/dataModel").Doc<"shoppingItems">;
+  onSubmit: (values: {
+    name: string;
+    quantity: string;
+    category: string;
+    note: string;
+  }) => Promise<void>;
+}) {
+  const saved = useSavedForm();
+  const [values, setValues] = useState({
+    name: initialItem.name,
+    quantity: initialItem.quantity ?? "",
+    category: initialItem.category ?? "",
+    note: initialItem.note ?? "",
+  });
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <EntityForm
+      pending={pending}
+      error={error}
+      onSubmit={async (e) => {
+        e.preventDefault();
+        if (pending) return;
+        setPending(true);
+        setError(null);
+        try {
+          await onSubmit(values);
+          saved();
+        } catch (err) {
+          setError(err instanceof Error ? err.message : "Could not save item.");
+        } finally {
+          setPending(false);
+        }
+      }}
+    >
+      {(["name", "quantity", "category", "note"] as const).map((field) => (
+        <div key={field} className="grid gap-2">
+          <Label htmlFor={`shopping-item-${field}`} className="capitalize">
+            {field}
+          </Label>
+          <Input
+            id={`shopping-item-${field}`}
+            value={values[field]}
+            required={field === "name"}
+            onChange={(e) => setValues({ ...values, [field]: e.target.value })}
+          />
+        </div>
+      ))}
+      {error && (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      )}
+      <Button type="submit" disabled={pending}>
+        {pending ? "Saving…" : "Save changes"}
+      </Button>
+    </EntityForm>
   );
 }

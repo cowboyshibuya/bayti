@@ -1,7 +1,10 @@
 "use client";
 
+import { EntityForm, useSavedForm } from "@/components/shared/entity-form";
+
 import { useMemo, useState } from "react";
 import type { FormEvent } from "react";
+import { useHousehold } from "@/lib/household-context";
 import { Doc, Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,6 +57,7 @@ export function DocumentForm({
   allowFileUpload?: boolean;
   onSubmit: (values: DocumentFormSubmitValues) => Promise<void>;
 }) {
+  const saved = useSavedForm();
   const [title, setTitle] = useState(initialDocument?.title ?? "");
   const [documentType, setDocumentType] = useState<DocumentType>(
     initialDocument?.documentType ?? "policy",
@@ -65,20 +69,29 @@ export function DocumentForm({
   const [amount, setAmount] = useState(
     initialDocument?.amount !== undefined ? String(initialDocument.amount) : "",
   );
-  const [currency, setCurrency] = useState(initialDocument?.currency ?? "EUR");
-  const [issuedAt, setIssuedAt] = useState(formatDateInputValue(initialDocument?.issuedAt));
-  const [expiresAt, setExpiresAt] = useState(formatDateInputValue(initialDocument?.expiresAt));
+  const { household } = useHousehold();
+  const currency = initialDocument?.currency ?? household?.currency ?? "EUR";
+  const [issuedAt, setIssuedAt] = useState(
+    formatDateInputValue(initialDocument?.issuedAt),
+  );
+  const [expiresAt, setExpiresAt] = useState(
+    formatDateInputValue(initialDocument?.expiresAt),
+  );
   const [file, setFile] = useState<File | undefined>();
+  const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const sortedFolders = useMemo(
-    () => [...folders].sort((left, right) => left.name.localeCompare(right.name)),
+    () =>
+      [...folders].sort((left, right) => left.name.localeCompare(right.name)),
     [folders],
   );
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (submitting) return;
     setSubmitting(true);
+    setError(null);
 
     try {
       await onSubmit({
@@ -95,13 +108,20 @@ export function DocumentForm({
         issuedAt: parseLocalDate(issuedAt, "00:00"),
         expiresAt: parseLocalDate(expiresAt, "00:00"),
       });
+      saved();
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "Could not save. Please try again.",
+      );
     } finally {
       setSubmitting(false);
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="grid gap-4">
+    <EntityForm onSubmit={handleSubmit} pending={submitting} error={error}>
       <div className="grid gap-2">
         <Label htmlFor="document-title">Title</Label>
         <Input
@@ -129,12 +149,12 @@ export function DocumentForm({
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="grid gap-2">
-          <Label>Type</Label>
+          <Label htmlFor="document-type">Type</Label>
           <Select
             value={documentType}
             onValueChange={(value) => setDocumentType(value as DocumentType)}
           >
-            <SelectTrigger className="w-full">
+            <SelectTrigger id="document-type" className="w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -148,9 +168,9 @@ export function DocumentForm({
         </div>
 
         <div className="grid gap-2">
-          <Label>Folder</Label>
+          <Label htmlFor="document-folder">Folder</Label>
           <Select value={folderValue} onValueChange={setFolderValue}>
-            <SelectTrigger className="w-full">
+            <SelectTrigger id="document-folder" className="w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -175,7 +195,7 @@ export function DocumentForm({
             placeholder="Insurance provider, school, bank"
           />
         </div>
-        <div className="grid gap-2 sm:col-span-2">
+        <div className="grid gap-2">
           <Label htmlFor="document-amount">Amount</Label>
           <Input
             id="document-amount"
@@ -185,15 +205,6 @@ export function DocumentForm({
             value={amount}
             onChange={(event) => setAmount(event.target.value)}
             placeholder="0.00"
-          />
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="document-currency">Currency</Label>
-          <Input
-            id="document-currency"
-            value={currency}
-            onChange={(event) => setCurrency(event.target.value.toUpperCase())}
-            maxLength={3}
           />
         </div>
       </div>
@@ -217,9 +228,14 @@ export function DocumentForm({
         </div>
       </div>
 
+      {error && (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      )}
       <Button type="submit" disabled={submitting}>
         {submitting ? "Saving..." : submitLabel}
       </Button>
-    </form>
+    </EntityForm>
   );
 }

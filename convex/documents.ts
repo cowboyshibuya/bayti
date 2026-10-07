@@ -100,46 +100,54 @@ export const list = query({
     documentType: v.optional(v.union(documentTypeValidator, v.literal("all"))),
     query: v.optional(v.string()),
     expiringOnly: v.optional(v.boolean()),
+    issuedFrom: v.optional(v.number()),
+    issuedTo: v.optional(v.number()),
     limit: v.optional(v.number()),
+    sort: v.optional(
+      v.union(
+        v.literal("issued"),
+        v.literal("issued-asc"),
+        v.literal("latest"),
+        v.literal("name"),
+        v.literal("expires"),
+        v.literal("size"),
+      ),
+    ),
   },
   handler: async (ctx, args) => {
     await requireHouseholdMember(ctx, args.householdId);
 
     const takeLimit = Math.min(args.limit ?? 200, 300);
 
-    let documents: Doc<"documents">[];
-
-    if (args.folderId !== undefined) {
-      documents = await ctx.db
-        .query("documents")
-        .withIndex("by_household_folder", (q) =>
-          q.eq("householdId", args.householdId).eq(
-            "folderId",
-            args.folderId ?? undefined,
-          ),
-        )
-        .order("desc")
-        .take(takeLimit);
-    } else if (args.documentType && args.documentType !== "all") {
-      const documentType = args.documentType;
-      documents = await ctx.db
-        .query("documents")
-        .withIndex("by_household_type", (q) =>
-          q.eq("householdId", args.householdId).eq(
-            "documentType",
-            documentType,
-          ),
-        )
-        .order("desc")
-        .take(takeLimit);
-    } else {
-      documents = await ctx.db
-        .query("documents")
-        .withIndex("by_household", (q) =>
-          q.eq("householdId", args.householdId),
-        )
-        .order("desc")
-        .take(takeLimit);
+    let documents: Doc<"documents">[] = [];
+    // Filter and sort the household records before selecting a bounded result.
+    for await (const document of ctx.db
+      .query("documents")
+      .withIndex("by_household", (q) =>
+        q.eq("householdId", args.householdId),
+      )) {
+      if (
+        args.folderId !== undefined &&
+        document.folderId !== (args.folderId ?? undefined)
+      )
+        continue;
+      if (
+        args.documentType &&
+        args.documentType !== "all" &&
+        document.documentType !== args.documentType
+      )
+        continue;
+      if (
+        args.issuedFrom !== undefined &&
+        (document.issuedAt === undefined || document.issuedAt < args.issuedFrom)
+      )
+        continue;
+      if (
+        args.issuedTo !== undefined &&
+        (document.issuedAt === undefined || document.issuedAt > args.issuedTo)
+      )
+        continue;
+      documents.push(document);
     }
 
     if (args.expiringOnly) {
@@ -165,12 +173,29 @@ export const list = query({
       );
     }
 
-    const enriched = await Promise.all(
-      documents.map((document) => enrichDocument(ctx, document)),
-    );
-
-    return enriched.sort(
-      (left, right) => right.document.updatedAt - left.document.updatedAt,
+    const sort = args.sort ?? "issued";
+    documents.sort((a, b) => {
+      let diff = 0;
+      if (sort === "name") diff = a.title.localeCompare(b.title);
+      else if (sort === "size") diff = (b.sizeBytes ?? 0) - (a.sizeBytes ?? 0);
+      else if (sort === "latest") diff = b.updatedAt - a.updatedAt;
+      else {
+        const left = sort === "expires" ? a.expiresAt : a.issuedAt;
+        const right = sort === "expires" ? b.expiresAt : b.issuedAt;
+        if (left === undefined || right === undefined)
+          diff = left === right ? 0 : left === undefined ? 1 : -1;
+        else
+          diff =
+            sort === "expires" || sort === "issued-asc"
+              ? left - right
+              : right - left;
+      }
+      return diff || a._id.localeCompare(b._id);
+    });
+    return await Promise.all(
+      documents
+        .slice(0, takeLimit)
+        .map((document) => enrichDocument(ctx, document)),
     );
   },
 });
@@ -208,7 +233,10 @@ export const create = mutation({
       sizeBytes: args.sizeBytes,
       vendor: cleanOptionalString(args.vendor),
       amount: args.amount,
-      currency: cleanOptionalString(args.currency) ?? "EUR",
+      currency:
+        cleanOptionalString(args.currency) ??
+        (await ctx.db.get(args.householdId))?.currency ??
+        "EUR",
       issuedAt: args.issuedAt,
       expiresAt: args.expiresAt,
       uploadedByUserId: user._id,
@@ -254,14 +282,18 @@ export const update = mutation({
 
     if (args.title !== undefined) patch.title = cleanTitle(args.title);
     if (args.documentType !== undefined) patch.documentType = args.documentType;
-    if (args.folderId !== undefined) patch.folderId = args.folderId ?? undefined;
-    if (args.vendor !== undefined) patch.vendor = cleanOptionalString(args.vendor);
+    if (args.folderId !== undefined)
+      patch.folderId = args.folderId ?? undefined;
+    if (args.vendor !== undefined)
+      patch.vendor = cleanOptionalString(args.vendor);
     if (args.amount !== undefined) patch.amount = args.amount ?? undefined;
     if (args.currency !== undefined) {
       patch.currency = cleanOptionalString(args.currency) ?? undefined;
     }
-    if (args.issuedAt !== undefined) patch.issuedAt = args.issuedAt ?? undefined;
-    if (args.expiresAt !== undefined) patch.expiresAt = args.expiresAt ?? undefined;
+    if (args.issuedAt !== undefined)
+      patch.issuedAt = args.issuedAt ?? undefined;
+    if (args.expiresAt !== undefined)
+      patch.expiresAt = args.expiresAt ?? undefined;
 
     await ctx.db.patch(args.documentId, patch);
 
@@ -301,8 +333,18 @@ export const remove = mutation({
       await ctx.db.delete(link._id);
     }
 
-    await deleteLinkedReminders(ctx, args.householdId, "document", args.documentId);
-    await deleteTaggingsForEntity(ctx, args.householdId, ENTITY_TYPES.document, args.documentId);
+    await deleteLinkedReminders(
+      ctx,
+      args.householdId,
+      "document",
+      args.documentId,
+    );
+    await deleteTaggingsForEntity(
+      ctx,
+      args.householdId,
+      ENTITY_TYPES.document,
+      args.documentId,
+    );
 
     if (document.storageId) {
       await ctx.storage.delete(document.storageId);

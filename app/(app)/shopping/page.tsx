@@ -2,12 +2,16 @@
 
 import { useMutation, useQuery } from "convex/react";
 import { Plus } from "lucide-react";
+import { EntityCollection } from "@/components/shared/entity-collection";
 import { useState } from "react";
 
 import { Doc, Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
 import { LoadingState } from "@/components/shared/loading-state";
-import { ShoppingListForm, type ShoppingListFormSubmitValues } from "@/components/shopping/shopping-forms";
+import {
+  ShoppingListForm,
+  type ShoppingListFormSubmitValues,
+} from "@/components/shopping/shopping-forms";
 import { ShoppingListCard } from "@/components/shopping/shopping-cards";
 import { Button } from "@/components/ui/button";
 import {
@@ -52,9 +56,7 @@ export default function ShoppingPage() {
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-sm text-muted-foreground">
-            {household?.name}
-          </p>
+          <p className="text-sm text-muted-foreground">{household?.name}</p>
           <h1 className="text-2xl font-semibold">Shopping</h1>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
@@ -71,7 +73,10 @@ export default function ShoppingPage() {
                 Create a list to track household shopping items.
               </DialogDescription>
             </DialogHeader>
-            <ShoppingListForm submitLabel="Create list" onSubmit={handleCreate} />
+            <ShoppingListForm
+              submitLabel="Create list"
+              onSubmit={handleCreate}
+            />
           </DialogContent>
         </Dialog>
       </div>
@@ -128,25 +133,39 @@ function ListGrid({
     return (
       <div className="rounded-xl border border-dashed bg-muted/30 p-5 text-sm">
         <h3 className="font-medium">{emptyTitle}</h3>
-        <p className="mt-1 leading-6 text-muted-foreground">{emptyDescription}</p>
+        <p className="mt-1 leading-6 text-muted-foreground">
+          {emptyDescription}
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {lists.map((list) => {
-        const items =
-          listData?.activeLists.find((l) => l.list._id === list._id)?.items ?? [];
-        return (
-          <ShoppingListCard
-            key={list._id}
-            list={list}
-            itemCount={items.length}
-            checkedCount={items.filter((item) => item.checked).length}
-          />
-        );
-      })}
-    </div>
+    <EntityCollection
+      items={lists}
+      date={(list) => list.updatedAt}
+      defaultDescending
+      dateLabel="Updated"
+    >
+      {(visible) => (
+        <>
+          <div className="grid gap-3">
+            {visible.map((list) => {
+              const items =
+                listData?.activeLists.find((l) => l.list._id === list._id)
+                  ?.items ?? [];
+              return (
+                <ShoppingListCard
+                  key={list._id}
+                  list={list}
+                  itemCount={items.length}
+                  checkedCount={items.filter((item) => item.checked).length}
+                />
+              );
+            })}
+          </div>
+        </>
+      )}
+    </EntityCollection>
   );
 }

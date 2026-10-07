@@ -3,11 +3,7 @@ import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
-import {
-  ACTIVITY_ACTIONS,
-  ADULT_ROLES,
-  ENTITY_TYPES,
-} from "./lib/constants";
+import { ACTIVITY_ACTIONS, ADULT_ROLES, ENTITY_TYPES } from "./lib/constants";
 import { writeActivityEvent } from "./lib/activity";
 import {
   normalizeHouseholdRole,
@@ -80,10 +76,18 @@ async function canRemoveBill(
   bill: Doc<"bills">,
   currentUserId: Id<"users">,
 ) {
-  const membership = await requireHouseholdMember(ctx, householdId, currentUserId);
+  const membership = await requireHouseholdMember(
+    ctx,
+    householdId,
+    currentUserId,
+  );
   const role = normalizeHouseholdRole(membership.role);
 
-  if (role === "admin" || role === "adult" || bill.createdByUserId === currentUserId) {
+  if (
+    role === "admin" ||
+    role === "adult" ||
+    bill.createdByUserId === currentUserId
+  ) {
     return;
   }
 
@@ -100,11 +104,15 @@ async function setBillStatus(
 ) {
   const user = await requireCurrentUser(ctx);
   await requireHouseholdRole(ctx, input.householdId, ADULT_ROLES);
-  const bill = await requireBillInHousehold(ctx, input.householdId, input.billId);
+  const bill = await requireBillInHousehold(
+    ctx,
+    input.householdId,
+    input.billId,
+  );
   const now = Date.now();
   const paidAt =
     input.status === "paid"
-      ? bill.paidAt ?? now
+      ? (bill.paidAt ?? now)
       : bill.status === "paid"
         ? undefined
         : bill.paidAt;
@@ -207,6 +215,15 @@ export const list = query({
     }
 
     return bills.sort((left, right) => {
+      if (args.view === "paid") {
+        if (left.paidAt === undefined || right.paidAt === undefined)
+          return left.paidAt === right.paidAt
+            ? left._id.localeCompare(right._id)
+            : left.paidAt === undefined
+              ? 1
+              : -1;
+        return right.paidAt - left.paidAt || left._id.localeCompare(right._id);
+      }
       const leftDue = left.dueAt ?? Number.MAX_SAFE_INTEGER;
       const rightDue = right.dueAt ?? Number.MAX_SAFE_INTEGER;
 
@@ -235,7 +252,11 @@ export const getDetails = query({
     billId: v.id("bills"),
   },
   handler: async (ctx, args) => {
-    const bill = await requireBillInHousehold(ctx, args.householdId, args.billId);
+    const bill = await requireBillInHousehold(
+      ctx,
+      args.householdId,
+      args.billId,
+    );
     const recurrence = bill.recurrenceRuleId
       ? await ctx.db.get(bill.recurrenceRuleId)
       : null;
@@ -260,6 +281,7 @@ export const create = mutation({
     provider: v.optional(v.string()),
     amountExpected: v.optional(v.number()),
     currency: v.optional(v.string()),
+    paidAt: v.optional(v.number()),
     dueAt: v.optional(v.number()),
     status: v.optional(billStatusValidator),
     priority: v.optional(billPriorityValidator),
@@ -279,6 +301,8 @@ export const create = mutation({
     await requireHouseholdRole(ctx, args.householdId, ADULT_ROLES);
     await ensureAssigneeIsMember(ctx, args.householdId, args.ownerUserId);
 
+    if (args.paidAt !== undefined && !Number.isFinite(args.paidAt))
+      throw new Error("Choose a valid payment date.");
     const now = Date.now();
     let recurrenceRuleId: Id<"recurrenceRules"> | undefined;
 
@@ -302,7 +326,10 @@ export const create = mutation({
       description: cleanDescription(args.description),
       provider: args.provider?.trim() ?? undefined,
       amountExpected: args.amountExpected,
-      currency: args.currency ?? "EUR",
+      currency:
+        args.currency ??
+        (await ctx.db.get(args.householdId))?.currency ??
+        "EUR",
       dueAt: args.dueAt,
       status: args.status ?? "upcoming",
       priority: args.priority ?? "medium",
@@ -310,7 +337,7 @@ export const create = mutation({
       autopay: args.autopay ?? false,
       recurrenceRuleId,
       createdByUserId: user._id,
-      paidAt: undefined,
+      paidAt: args.status === "paid" ? (args.paidAt ?? now) : undefined,
       createdAt: now,
       updatedAt: now,
     });
@@ -332,11 +359,13 @@ export const update = mutation({
   args: {
     householdId: v.id("households"),
     billId: v.id("bills"),
+    status: v.optional(billStatusValidator),
     title: v.optional(v.string()),
     description: v.optional(v.string()),
     provider: v.optional(v.string()),
-    amountExpected: v.optional(v.number()),
+    amountExpected: v.optional(v.union(v.number(), v.null())),
     currency: v.optional(v.string()),
+    paidAt: v.optional(v.number()),
     dueAt: v.optional(v.union(v.number(), v.null())),
     priority: v.optional(billPriorityValidator),
     ownerUserId: v.optional(v.union(v.id("users"), v.null())),
@@ -356,7 +385,11 @@ export const update = mutation({
   handler: async (ctx, args) => {
     const user = await requireCurrentUser(ctx);
     await requireHouseholdRole(ctx, args.householdId, ADULT_ROLES);
-    const bill = await requireBillInHousehold(ctx, args.householdId, args.billId);
+    const bill = await requireBillInHousehold(
+      ctx,
+      args.householdId,
+      args.billId,
+    );
 
     if (args.ownerUserId) {
       await ensureAssigneeIsMember(ctx, args.householdId, args.ownerUserId);
@@ -366,14 +399,25 @@ export const update = mutation({
       updatedAt: Date.now(),
     };
 
+    const status = args.status ?? bill.status;
+    if (args.paidAt !== undefined && !Number.isFinite(args.paidAt))
+      throw new Error("Choose a valid payment date.");
+    if (args.status !== undefined) patch.status = status;
+    if (status !== "paid") patch.paidAt = undefined;
+    else if (args.paidAt !== undefined) patch.paidAt = args.paidAt;
+    else if (bill.status !== "paid") patch.paidAt = Date.now();
     if (args.title !== undefined) patch.title = cleanTitle(args.title);
-    if (args.description !== undefined) patch.description = cleanDescription(args.description);
-    if (args.provider !== undefined) patch.provider = args.provider?.trim() ?? undefined;
-    if (args.amountExpected !== undefined) patch.amountExpected = args.amountExpected;
+    if (args.description !== undefined)
+      patch.description = cleanDescription(args.description);
+    if (args.provider !== undefined)
+      patch.provider = args.provider?.trim() ?? undefined;
+    if (args.amountExpected !== undefined)
+      patch.amountExpected = args.amountExpected ?? undefined;
     if (args.currency !== undefined) patch.currency = args.currency;
     if (args.dueAt !== undefined) patch.dueAt = args.dueAt ?? undefined;
     if (args.priority !== undefined) patch.priority = args.priority;
-    if (args.ownerUserId !== undefined) patch.ownerUserId = args.ownerUserId ?? undefined;
+    if (args.ownerUserId !== undefined)
+      patch.ownerUserId = args.ownerUserId ?? undefined;
     if (args.autopay !== undefined) patch.autopay = args.autopay;
 
     if (args.recurrence !== undefined) {
@@ -429,6 +473,22 @@ export const update = mutation({
       message: "Updated bill details.",
     });
 
+    if (args.status !== undefined && args.status !== bill.status) {
+      await writeActivityEvent(ctx, {
+        householdId: args.householdId,
+        actorUserId: user._id,
+        action:
+          args.status === "paid"
+            ? ACTIVITY_ACTIONS.billPaid
+            : ACTIVITY_ACTIONS.billStatusChanged,
+        entityType: ENTITY_TYPES.bill,
+        entityId: args.billId,
+        message:
+          args.status === "paid"
+            ? `Paid bill "${bill.title}".`
+            : `Changed bill status to ${args.status.replaceAll("_", " ")}.`,
+      });
+    }
     return args.billId;
   },
 });
@@ -461,7 +521,11 @@ export const cancel = mutation({
   },
   handler: async (ctx, args) => {
     const user = await requireCurrentUser(ctx);
-    const bill = await requireBillInHousehold(ctx, args.householdId, args.billId);
+    const bill = await requireBillInHousehold(
+      ctx,
+      args.householdId,
+      args.billId,
+    );
     await canRemoveBill(ctx, args.householdId, bill, user._id);
 
     await ctx.db.patch(args.billId, {
@@ -490,12 +554,26 @@ export const remove = mutation({
   },
   handler: async (ctx, args) => {
     const user = await requireCurrentUser(ctx);
-    const bill = await requireBillInHousehold(ctx, args.householdId, args.billId);
+    const bill = await requireBillInHousehold(
+      ctx,
+      args.householdId,
+      args.billId,
+    );
     await canRemoveBill(ctx, args.householdId, bill, user._id);
 
     await deleteLinkedReminders(ctx, args.householdId, "bill", args.billId);
-    await deleteDocumentLinksForEntity(ctx, args.householdId, "bill", args.billId);
-    await deleteTaggingsForEntity(ctx, args.householdId, ENTITY_TYPES.bill, args.billId);
+    await deleteDocumentLinksForEntity(
+      ctx,
+      args.householdId,
+      "bill",
+      args.billId,
+    );
+    await deleteTaggingsForEntity(
+      ctx,
+      args.householdId,
+      ENTITY_TYPES.bill,
+      args.billId,
+    );
     await ctx.db.delete(args.billId);
 
     await writeActivityEvent(ctx, {

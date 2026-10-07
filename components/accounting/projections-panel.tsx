@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { CalendarClock, ReceiptText, AlertTriangle } from "lucide-react";
 
-import { formatCurrency } from "@/lib/formatters";
+import { useCurrencyFormatter } from "@/lib/use-currency-formatter";
 import { formatDate } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 
@@ -26,6 +26,7 @@ export function ProjectionsPanel({
     actualTotal: number;
   }[];
 }) {
+  const formatCurrency = useCurrencyFormatter();
   if (projections.length === 0) {
     return (
       <div className="rounded-xl border border-dashed bg-muted/30 p-6 text-center text-sm text-muted-foreground">
@@ -77,7 +78,9 @@ export function ProjectionsPanel({
                   ) : (
                     <ReceiptText className="size-3.5 text-muted-foreground" />
                   )}
-                  <span className={cn(bill.isProjected && "text-muted-foreground")}>
+                  <span
+                    className={cn(bill.isProjected && "text-muted-foreground")}
+                  >
                     {bill.title}
                   </span>
                   {bill.isProjected && (

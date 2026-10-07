@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useId } from "react";
 import {
   addMonths,
   eachDayOfInterval,
@@ -22,6 +22,7 @@ import {
   Clock,
 } from "lucide-react";
 
+import { useFormDialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -32,6 +33,8 @@ import {
 import { cn } from "@/lib/utils";
 
 type DatePickerProps = {
+  id?: string;
+  "aria-label"?: string;
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
@@ -42,6 +45,8 @@ type DatePickerProps = {
 };
 
 type TimePickerProps = {
+  id?: string;
+  "aria-label"?: string;
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
@@ -52,6 +57,7 @@ type TimePickerProps = {
 };
 
 type DateTimePickerProps = {
+  id?: string;
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
@@ -74,6 +80,8 @@ const minuteOptions = Array.from({ length: 12 }, (_, index) =>
 );
 
 export function DatePicker({
+  id,
+  "aria-label": ariaLabel,
   value,
   onChange,
   placeholder = "Pick date",
@@ -82,11 +90,15 @@ export function DatePicker({
   allowClear = true,
   className,
 }: DatePickerProps) {
+  const dialog = useFormDialog();
+  const change = (value: string) => {
+    dialog?.setDirty(true);
+    onChange(value);
+  };
+  const generatedId = useId();
   const selectedDate = parseDateValue(value);
   const [open, setOpen] = useState(false);
-  const [visibleMonth, setVisibleMonth] = useState(
-    selectedDate ?? new Date(),
-  );
+  const [visibleMonth, setVisibleMonth] = useState(selectedDate ?? new Date());
 
   const days = useMemo(() => {
     const monthStart = startOfMonth(visibleMonth);
@@ -108,23 +120,28 @@ export function DatePicker({
     >
       <PopoverTrigger asChild>
         <Button
+          id={id ?? generatedId}
+          aria-label={ariaLabel}
           type="button"
           variant="outline"
           disabled={disabled}
-          aria-required={required}
           className={cn(
             "h-9 w-full justify-start rounded-2xl px-3 text-left font-normal",
-            !value && "text-foreground/42",
+            !value && "text-muted-foreground",
             className,
           )}
         >
-          <CalendarClock className="size-4 text-foreground/42" />
+          {required && <span className="sr-only">Required</span>}
+          <CalendarClock className="size-4 text-muted-foreground" />
           <span className="truncate">
             {selectedDate ? format(selectedDate, "MMM d, yyyy") : placeholder}
           </span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-[min(22rem,calc(100vw-2rem))] p-3">
+      <PopoverContent
+        align="start"
+        className="w-[min(22rem,calc(100vw-2rem))] p-3"
+      >
         <div className="flex items-center justify-between gap-2">
           <Button
             type="button"
@@ -136,10 +153,10 @@ export function DatePicker({
             <ChevronLeft className="size-4" />
           </Button>
           <div className="text-center">
-            <p className="text-sm font-semibold text-foreground/88">
+            <p className="text-sm font-semibold text-foreground">
               {format(visibleMonth, "MMMM yyyy")}
             </p>
-            <p className="text-xs text-foreground/42">Choose a day</p>
+            <p className="text-xs text-muted-foreground">Choose a day</p>
           </div>
           <Button
             type="button"
@@ -156,7 +173,7 @@ export function DatePicker({
           {weekdays.map((weekday) => (
             <div
               key={weekday}
-              className="flex h-7 items-center justify-center text-[11px] font-medium text-foreground/42"
+              className="flex h-7 items-center justify-center text-[11px] font-medium text-muted-foreground"
             >
               {weekday}
             </div>
@@ -173,13 +190,13 @@ export function DatePicker({
                 size="icon-sm"
                 className={cn(
                   "h-9 w-full rounded-xl text-sm",
-                  outside && "text-foreground/28",
+                  outside && "text-muted-foreground",
                   isToday(day) &&
                     !selected &&
                     "bg-accent/12 text-foreground hover:bg-accent/18",
                 )}
                 onClick={() => {
-                  onChange(formatDateValue(day));
+                  change(formatDateValue(day));
                   setOpen(false);
                 }}
               >
@@ -195,7 +212,7 @@ export function DatePicker({
             variant="outline"
             size="sm"
             onClick={() => {
-              onChange(formatDateValue(new Date()));
+              change(formatDateValue(new Date()));
               setOpen(false);
             }}
           >
@@ -207,7 +224,7 @@ export function DatePicker({
               variant="ghost"
               size="sm"
               onClick={() => {
-                onChange("");
+                change("");
                 setOpen(false);
               }}
             >
@@ -221,6 +238,8 @@ export function DatePicker({
 }
 
 export function TimePicker({
+  id,
+  "aria-label": ariaLabel,
   value,
   onChange,
   placeholder = "Pick time",
@@ -229,42 +248,53 @@ export function TimePicker({
   allowClear = true,
   className,
 }: TimePickerProps) {
+  const dialog = useFormDialog();
+  const change = (value: string) => {
+    dialog?.setDirty(true);
+    onChange(value);
+  };
+  const generatedId = useId();
   const [open, setOpen] = useState(false);
   const selected = parseTimeValue(value);
   const hour = selected.hour;
   const minute = selected.minute;
 
   function commit(nextHour = hour, nextMinute = minute) {
-    onChange(`${nextHour}:${nextMinute}`);
+    change(`${nextHour}:${nextMinute}`);
   }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
+          id={id ?? generatedId}
+          aria-label={ariaLabel}
           type="button"
           variant="outline"
           disabled={disabled}
-          aria-required={required}
           className={cn(
             "h-9 w-full justify-start rounded-2xl px-3 text-left font-normal",
-            !value && "text-foreground/42",
+            !value && "text-muted-foreground",
             className,
           )}
         >
-          <Clock className="size-4 text-foreground/42" />
+          {required && <span className="sr-only">Required</span>}
+          <Clock className="size-4 text-muted-foreground" />
           <span className="truncate">
             {value ? formatTimeLabel(value) : placeholder}
           </span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-[min(23rem,calc(100vw-2rem))] p-3">
+      <PopoverContent
+        align="start"
+        className="w-[min(23rem,calc(100vw-2rem))] p-3"
+      >
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold text-foreground/88">
-              Choose time
+            <p className="text-sm font-semibold text-foreground">Choose time</p>
+            <p className="text-xs text-muted-foreground">
+              Five-minute precision
             </p>
-            <p className="text-xs text-foreground/42">Five-minute precision</p>
           </div>
           {allowClear && !required && (
             <Button
@@ -272,7 +302,7 @@ export function TimePicker({
               variant="ghost"
               size="sm"
               onClick={() => {
-                onChange("");
+                change("");
                 setOpen(false);
               }}
             >
@@ -295,7 +325,7 @@ export function TimePicker({
               }}
             >
               {option.label}
-              <span className="ml-auto text-xs text-foreground/42">
+              <span className="ml-auto text-xs text-muted-foreground">
                 {formatTimeLabel(option.value)}
               </span>
             </Button>
@@ -304,7 +334,7 @@ export function TimePicker({
 
         <div className="mt-3 grid grid-cols-[1fr_auto_1fr] gap-2">
           <div className="grid gap-2">
-            <p className="text-xs font-medium uppercase text-foreground/42">
+            <p className="text-xs font-medium uppercase text-muted-foreground">
               Hour
             </p>
             <div className="grid max-h-36 grid-cols-3 gap-1 overflow-y-auto rounded-xl border bg-muted/25 p-1">
@@ -326,10 +356,12 @@ export function TimePicker({
             </div>
           </div>
 
-          <span className="pt-8 text-lg font-semibold text-foreground/42">:</span>
+          <span className="pt-8 text-lg font-semibold text-muted-foreground">
+            :
+          </span>
 
           <div className="grid gap-2">
-            <p className="text-xs font-medium uppercase text-foreground/42">
+            <p className="text-xs font-medium uppercase text-muted-foreground">
               Minute
             </p>
             <div className="grid max-h-36 grid-cols-3 gap-1 overflow-y-auto rounded-xl border bg-muted/25 p-1">
@@ -380,6 +412,7 @@ export function TimePicker({
 }
 
 export function DateTimePicker({
+  id,
   value,
   onChange,
   disabled,
@@ -391,6 +424,7 @@ export function DateTimePicker({
   return (
     <div className={cn("grid gap-2 sm:grid-cols-2", className)}>
       <DatePicker
+        id={id}
         value={dateValue}
         onChange={(nextDate) => {
           onChange(nextDate ? `${nextDate}T${timeValue || "09:00"}` : "");
@@ -401,6 +435,8 @@ export function DateTimePicker({
         allowClear={!required}
       />
       <TimePicker
+        id={id ? `${id}-time` : undefined}
+        aria-label="Time"
         value={timeValue}
         onChange={(nextTime) => {
           onChange(dateValue && nextTime ? `${dateValue}T${nextTime}` : "");

@@ -1,52 +1,50 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { EntityCollection } from "@/components/shared/entity-collection";
 import { CheckSquare } from "lucide-react";
-
 
 import type { Doc } from "@/convex/_generated/dataModel";
 import { EmptyState } from "@/components/shared/empty-state";
 import { TaskCard } from "./task-card";
 
-const container = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.04 },
-  },
-};
-
 export function TaskList({
   tasks,
+  dateMode = "due",
   emptyTitle = "No tasks found",
   emptyDescription = "Create a task or adjust your filters.",
   onMarkDone,
 }: {
   tasks: Doc<"tasks">[];
+  dateMode?: "due" | "completed";
   emptyTitle?: string;
   emptyDescription?: string;
   onMarkDone?: (task: Doc<"tasks">) => void;
 }) {
-  if (tasks.length === 0) {
-    return (
-      <EmptyState
-        icon={CheckSquare}
-        title={emptyTitle}
-        description={emptyDescription}
-      />
-    );
-  }
-
   return (
-    <motion.div
-      className="grid gap-3"
-      variants={container}
-      initial="hidden"
-      animate="visible"
+    <EntityCollection
+      items={tasks}
+      date={(item) =>
+        dateMode === "completed" ? item.completedAt : item.dueAt
+      }
+      dateLabel={dateMode === "completed" ? "Completed" : "Due date"}
+      defaultDescending={dateMode === "completed"}
+      priority
     >
-      {tasks.map((task) => (
-        <TaskCard key={task._id} task={task} onMarkDone={onMarkDone} />
-      ))}
-    </motion.div>
+      {(visible) =>
+        visible.length === 0 ? (
+          <EmptyState
+            icon={CheckSquare}
+            title={emptyTitle}
+            description={emptyDescription}
+          />
+        ) : (
+          <div className="grid gap-3">
+            {visible.map((task) => (
+              <TaskCard key={task._id} task={task} onMarkDone={onMarkDone} />
+            ))}
+          </div>
+        )
+      }
+    </EntityCollection>
   );
 }

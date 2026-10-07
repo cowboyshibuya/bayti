@@ -14,9 +14,9 @@ import {
   Users,
 } from "lucide-react";
 
-
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { CurrencyPreference } from "@/components/settings/currency-preference";
 import { ThemePreference } from "@/components/settings/theme-preference";
 import { EmptyState } from "@/components/shared/empty-state";
 import { LoadingState } from "@/components/shared/loading-state";
@@ -64,9 +64,7 @@ export default function SettingsPage() {
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6">
       <div>
-        <p className="text-sm text-muted-foreground">
-          {household?.name}
-        </p>
+        <p className="text-sm text-muted-foreground">{household?.name}</p>
         <h1 className="text-2xl font-semibold">Settings</h1>
       </div>
 
@@ -75,8 +73,9 @@ export default function SettingsPage() {
           <CardHeader>
             <CardTitle className="text-sm">Preferences</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="grid gap-5">
             <ThemePreference />
+            <CurrencyPreference key={household?._id} />
           </CardContent>
         </Card>
 
@@ -107,7 +106,9 @@ export default function SettingsPage() {
           </CardHeader>
           <CardContent>
             {!householdId || stellaSettings === undefined ? (
-              <p className="text-sm text-muted-foreground">Loading Stella settings...</p>
+              <p className="text-sm text-muted-foreground">
+                Loading Stella settings...
+              </p>
             ) : (
               <StellaSettingsSection
                 key={stellaSettings.modelId}
@@ -128,8 +129,9 @@ export default function SettingsPage() {
           </CardHeader>
           <CardContent>
             <p className="text-sm leading-6 text-muted-foreground">
-              Admins can manage household settings and members. Adults can create
-              bills and expenses. Any non-viewer member can create tasks and notes.
+              Admins can manage household settings and members. Adults can
+              create bills and expenses. Any non-viewer member can create tasks
+              and notes.
             </p>
           </CardContent>
         </Card>
@@ -149,7 +151,9 @@ export default function SettingsPage() {
                 icon={ShieldCheck}
               />
             ) : members === undefined ? (
-              <p className="text-sm text-muted-foreground">Loading members...</p>
+              <p className="text-sm text-muted-foreground">
+                Loading members...
+              </p>
             ) : (
               <div className="divide-y rounded-xl border">
                 {members.map(({ membership, user }) => (
@@ -282,7 +286,9 @@ function HouseholdSettingsSection({
       router.refresh();
     } catch (caught) {
       setMessage(
-        caught instanceof Error ? caught.message : "Could not delete household.",
+        caught instanceof Error
+          ? caught.message
+          : "Could not delete household.",
       );
     } finally {
       setPending(null);
@@ -543,8 +549,8 @@ function StellaSettingsSection({
     return (
       <div className="grid gap-2">
         <p className="text-sm leading-6 text-muted-foreground">
-          Stella uses {selectedModel?.label ?? settings.modelId}. Only admins can
-          change the household model.
+          Stella uses {selectedModel?.label ?? settings.modelId}. Only admins
+          can change the household model.
         </p>
       </div>
     );

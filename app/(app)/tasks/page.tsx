@@ -2,12 +2,14 @@
 
 import { useMutation, useQuery } from "convex/react";
 import { Plus } from "lucide-react";
-import { AnimatePresence } from "framer-motion";
 
 import { Doc, Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
 import { LoadingState } from "@/components/shared/loading-state";
-import { TaskForm, type TaskFormSubmitValues } from "@/components/tasks/task-form";
+import {
+  TaskForm,
+  type TaskFormSubmitValues,
+} from "@/components/tasks/task-form";
 import { TaskList } from "@/components/tasks/task-list";
 import { Button } from "@/components/ui/button";
 import {
@@ -58,7 +60,7 @@ export default function TasksPage() {
       taskType: values.taskType,
       ownerUserId: values.ownerUserId,
       dueAt: values.dueAt,
-      recurrence: values.recurrence,
+      recurrence: values.recurrence ?? undefined,
     });
   }
 
@@ -70,9 +72,7 @@ export default function TasksPage() {
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-sm text-muted-foreground">
-            {household?.name}
-          </p>
+          <p className="text-sm text-muted-foreground">{household?.name}</p>
           <h1 className="text-2xl font-semibold">Tasks</h1>
         </div>
         <Dialog>
@@ -82,7 +82,7 @@ export default function TasksPage() {
               Create task
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-2xl">
+          <DialogContent className="sm:max-w-2xl">
             <DialogHeader>
               <DialogTitle>Create task</DialogTitle>
               <DialogDescription>
@@ -106,17 +106,16 @@ export default function TasksPage() {
             </TabsTrigger>
           ))}
         </TabsList>
-        <AnimatePresence mode="wait">
-          {taskViews.map((view) => (
-            <TabsContent key={view.value} value={view.value}>
-              <TaskViewPanel
-                view={view.value}
-                householdId={currentHouseholdId}
-                onMarkDone={handleMarkDone}
-              />
-            </TabsContent>
-          ))}
-        </AnimatePresence>
+
+        {taskViews.map((view) => (
+          <TabsContent key={view.value} value={view.value}>
+            <TaskViewPanel
+              view={view.value}
+              householdId={currentHouseholdId}
+              onMarkDone={handleMarkDone}
+            />
+          </TabsContent>
+        ))}
       </Tabs>
     </div>
   );
@@ -147,6 +146,7 @@ function TaskViewPanel({
   return (
     <TaskList
       tasks={tasks}
+      dateMode={view === "completed" ? "completed" : "due"}
       emptyTitle={`No ${view} tasks`}
       emptyDescription="Create a task to start tracking household responsibilities."
       onMarkDone={onMarkDone}

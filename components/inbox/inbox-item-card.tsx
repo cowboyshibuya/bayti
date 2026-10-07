@@ -98,16 +98,36 @@ export function InboxItemCard({
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-start justify-between gap-3">
-            <Link href={item.href} className="min-w-0">
-              <p className="truncate font-semibold text-foreground/88">
-                {item.title}
-              </p>
-              {!compact && item.description && (
-                <p className="mt-1 line-clamp-2 text-sm text-foreground/42">
-                  {item.description}
+            {item.kind === "reminder" &&
+            item.entityType === "manual" &&
+            onEditReminder ? (
+              <button
+                type="button"
+                onClick={() => onEditReminder(item)}
+                className="min-w-0 text-left focus-visible:outline-2"
+                aria-label={`Edit ${item.title}`}
+              >
+                <p className="truncate font-semibold text-foreground/88">
+                  {item.title}
                 </p>
-              )}
-            </Link>
+                {!compact && item.description && (
+                  <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                    {item.description}
+                  </p>
+                )}
+              </button>
+            ) : (
+              <Link href={item.href} className="min-w-0">
+                <p className="truncate font-semibold text-foreground/88">
+                  {item.title}
+                </p>
+                {!compact && item.description && (
+                  <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                    {item.description}
+                  </p>
+                )}
+              </Link>
+            )}
             {item.user && (
               <UserAvatar
                 name={item.user.name}
@@ -124,16 +144,16 @@ export function InboxItemCard({
                   ? "border-destructive/20 bg-destructive/10 text-destructive"
                   : item.severity === "today"
                     ? "border-accent/20 bg-accent/10 text-accent"
-                    : "border-border bg-muted/45 text-foreground/42 dark:bg-white/[0.035]",
+                    : "border-border bg-muted/45 text-muted-foreground dark:bg-white/[0.035]",
               )}
             >
               {labelBySeverity[item.severity]}
             </span>
-            <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/45 px-2 py-0.5 text-xs text-foreground/42 dark:bg-white/[0.035]">
+            <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/45 px-2 py-0.5 text-xs text-muted-foreground dark:bg-white/[0.035]">
               <Clock className="size-3" />
               {formatDateTime(item.dueAt)}
             </span>
-            <span className="rounded-full border border-border bg-muted/45 px-2 py-0.5 text-xs text-foreground/42 capitalize dark:bg-white/[0.035]">
+            <span className="rounded-full border border-border bg-muted/45 px-2 py-0.5 text-xs text-muted-foreground capitalize dark:bg-white/[0.035]">
               {item.kind}
             </span>
           </div>
@@ -160,7 +180,11 @@ export function InboxItemCard({
             </Button>
           )}
           {item.kind === "reminder" && item.reminderId && onEditReminder && (
-            <Button size="sm" variant="outline" onClick={() => onEditReminder(item)}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => onEditReminder(item)}
+            >
               Edit
             </Button>
           )}

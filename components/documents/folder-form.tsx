@@ -1,5 +1,7 @@
 "use client";
 
+import { EntityForm, useSavedForm } from "@/components/shared/entity-form";
+
 import { useState } from "react";
 
 import { Doc } from "@/convex/_generated/dataModel";
@@ -22,26 +24,39 @@ export function FolderForm({
   submitLabel: string;
   onSubmit: (values: FolderFormSubmitValues) => Promise<void>;
 }) {
+  const saved = useSavedForm();
   const [name, setName] = useState(initialFolder?.name ?? "");
-  const [description, setDescription] = useState(initialFolder?.description ?? "");
+  const [description, setDescription] = useState(
+    initialFolder?.description ?? "",
+  );
+  const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (submitting) return;
     setSubmitting(true);
+    setError(null);
 
     try {
       await onSubmit({
         name,
         description: description.trim() || undefined,
       });
+      saved();
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "Could not save. Please try again.",
+      );
     } finally {
       setSubmitting(false);
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="grid gap-4">
+    <EntityForm onSubmit={handleSubmit} pending={submitting} error={error}>
       <div className="grid gap-2">
         <Label htmlFor="folder-name">Name</Label>
         <Input
@@ -61,9 +76,14 @@ export function FolderForm({
           placeholder="Optional note for this folder"
         />
       </div>
+      {error && (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      )}
       <Button type="submit" disabled={submitting}>
         {submitting ? "Saving..." : submitLabel}
       </Button>
-    </form>
+    </EntityForm>
   );
 }

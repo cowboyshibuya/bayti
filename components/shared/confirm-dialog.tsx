@@ -8,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useRef } from "react";
 import { Button } from "@/components/ui/button";
 
 export function ConfirmDialog({
@@ -31,15 +32,24 @@ export function ConfirmDialog({
   error?: string | null;
   onConfirm: () => void | Promise<void>;
 }) {
+  const confirming = useRef(false);
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!pending && !confirming.current) onOpenChange(next);
+      }}
+    >
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
         {error && (
-          <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          <p
+            role="alert"
+            className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-foreground"
+          >
             {error}
           </p>
         )}
@@ -51,7 +61,20 @@ export function ConfirmDialog({
           >
             {cancelLabel}
           </Button>
-          <Button variant="destructive" disabled={pending} onClick={onConfirm}>
+          <Button
+            variant="destructive"
+            className="text-foreground"
+            disabled={pending}
+            onClick={async () => {
+              if (confirming.current || pending) return;
+              confirming.current = true;
+              try {
+                await onConfirm();
+              } finally {
+                confirming.current = false;
+              }
+            }}
+          >
             {pending ? "Deleting..." : actionLabel}
           </Button>
         </DialogFooter>

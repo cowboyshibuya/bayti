@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 
-import { formatCurrency } from "@/lib/formatters";
+import { useCurrencyFormatter } from "@/lib/use-currency-formatter";
 import { cn } from "@/lib/utils";
 
 function StatCard({
@@ -23,6 +23,7 @@ function StatCard({
   variant?: "positive" | "negative" | "neutral" | "warning";
   delay?: number;
 }) {
+  const formatCurrency = useCurrencyFormatter();
   const variantStyles = {
     positive: "bg-success/10 text-success border-success/20",
     negative: "bg-destructive/10 text-destructive border-destructive/20",
@@ -59,13 +60,19 @@ function StatCard({
           <span
             className={cn(
               "inline-flex items-center gap-1 text-xs font-medium",
-              trend > 0 ? "text-destructive" : trend < 0 ? "text-success" : "text-muted-foreground",
+              trend > 0
+                ? "text-destructive"
+                : trend < 0
+                  ? "text-success"
+                  : "text-muted-foreground",
             )}
           >
             <TrendIcon className="size-3" />
             {trend > 0 ? "+" : ""}
             {trend.toFixed(0)}%
-            {trendLabel && <span className="text-muted-foreground">{trendLabel}</span>}
+            {trendLabel && (
+              <span className="text-muted-foreground">{trendLabel}</span>
+            )}
           </span>
         )}
       </div>
@@ -93,7 +100,8 @@ export function OverviewStats({
 }) {
   const billsTrend =
     data.lastMonth.billsPaid + data.lastMonth.billsExpected > 0
-      ? ((data.billsPaid.amount + data.billsExpected.amount -
+      ? ((data.billsPaid.amount +
+          data.billsExpected.amount -
           (data.lastMonth.billsPaid + data.lastMonth.billsExpected)) /
           (data.lastMonth.billsPaid + data.lastMonth.billsExpected)) *
         100
@@ -101,12 +109,16 @@ export function OverviewStats({
 
   const expenseTrend =
     data.lastMonth.expenses > 0
-      ? ((data.expenses.amount - data.lastMonth.expenses) / data.lastMonth.expenses) * 100
+      ? ((data.expenses.amount - data.lastMonth.expenses) /
+          data.lastMonth.expenses) *
+        100
       : 0;
 
   const netTrend =
     data.lastMonth.netOutflow > 0
-      ? ((data.netOutflow - data.lastMonth.netOutflow) / data.lastMonth.netOutflow) * 100
+      ? ((data.netOutflow - data.lastMonth.netOutflow) /
+          data.lastMonth.netOutflow) *
+        100
       : 0;
 
   return (

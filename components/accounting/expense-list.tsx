@@ -1,19 +1,11 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { EntityCollection } from "@/components/shared/entity-collection";
 import { WalletCards } from "lucide-react";
 
-import { Doc,} from "@/convex/_generated/dataModel";
+import { Doc } from "@/convex/_generated/dataModel";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ExpenseCard } from "./expense-card";
-
-const container = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.04 },
-  },
-};
 
 export function ExpenseList({
   expenses,
@@ -26,26 +18,32 @@ export function ExpenseList({
   emptyDescription?: string;
   onRemove?: (expense: Doc<"expenses">) => void;
 }) {
-  if (expenses.length === 0) {
-    return (
-      <EmptyState
-        icon={WalletCards}
-        title={emptyTitle}
-        description={emptyDescription}
-      />
-    );
-  }
-
   return (
-    <motion.div
-      className="grid gap-3"
-      variants={container}
-      initial="hidden"
-      animate="visible"
+    <EntityCollection
+      items={expenses}
+      date={(item) => item.spentAt}
+      defaultDescending={true}
+      amount
     >
-      {expenses.map((expense) => (
-        <ExpenseCard key={expense._id} expense={expense} onRemove={onRemove} />
-      ))}
-    </motion.div>
+      {(visible) =>
+        visible.length === 0 ? (
+          <EmptyState
+            icon={WalletCards}
+            title={emptyTitle}
+            description={emptyDescription}
+          />
+        ) : (
+          <div className="grid gap-3">
+            {visible.map((expense) => (
+              <ExpenseCard
+                key={expense._id}
+                expense={expense}
+                onRemove={onRemove}
+              />
+            ))}
+          </div>
+        )
+      }
+    </EntityCollection>
   );
 }

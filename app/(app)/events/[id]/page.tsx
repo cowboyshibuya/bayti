@@ -2,7 +2,13 @@
 
 import { use, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
-import { ArrowLeft, CalendarDays, MapPin, StickyNote, Trash2 } from "lucide-react";
+import {
+  ArrowLeft,
+  CalendarDays,
+  MapPin,
+  StickyNote,
+  Trash2,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -11,7 +17,10 @@ import { api } from "@/convex/_generated/api";
 import { RecentActivityPanel } from "@/components/dashboard/recent-activity-panel";
 import { LoadingState } from "@/components/shared/loading-state";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
-import { EventForm, type EventFormSubmitValues } from "@/components/events/event-form";
+import {
+  EventForm,
+  type EventFormSubmitValues,
+} from "@/components/events/event-form";
 import { EventStatusBadge } from "@/components/events/event-status-badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -53,9 +62,7 @@ export default function EventDetailPage({
   );
   const activity = useQuery(
     api.activity.listForEntity,
-    householdId
-      ? { householdId, entityType: "event", entityId: id }
-      : "skip",
+    householdId ? { householdId, entityType: "event", entityId: id } : "skip",
   );
   const updateEvent = useMutation(api.events.update);
   const updateStatus = useMutation(api.events.updateStatus);
@@ -76,16 +83,16 @@ export default function EventDetailPage({
     await updateEvent({
       householdId,
       eventId: event._id,
+      status: values.status,
       title: values.title,
-      description: values.description,
-      note: values.note,
+      description: values.description ?? "",
+      note: values.note ?? "",
       startsAt: values.startsAt,
       endsAt: values.endsAt ?? null,
       isAllDay: values.isAllDay,
-      location: values.location,
+      location: values.location ?? "",
       ownerUserId: values.ownerUserId ?? null,
     });
-    await updateStatus({ householdId, eventId: event._id, status: values.status });
     setEditOpen(false);
   }
 
@@ -105,7 +112,9 @@ export default function EventDetailPage({
       setDeleteOpen(false);
       router.push("/events");
     } catch (caught) {
-      setDeleteError(caught instanceof Error ? caught.message : "Could not delete event.");
+      setDeleteError(
+        caught instanceof Error ? caught.message : "Could not delete event.",
+      );
     } finally {
       setDeletePending(false);
     }
@@ -130,7 +139,9 @@ export default function EventDetailPage({
                 </span>
               )}
             </div>
-            <h1 className="text-3xl font-semibold tracking-normal">{event.title}</h1>
+            <h1 className="text-3xl font-semibold tracking-normal">
+              {event.title}
+            </h1>
             {event.description && (
               <p className="mt-3 max-w-2xl whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
                 {event.description}
@@ -138,11 +149,15 @@ export default function EventDetailPage({
             )}
           </div>
           <div className="flex flex-wrap gap-2">
-            <Dialog open={editOpen} onOpenChange={setEditOpen}>
+            <Dialog
+              open={editOpen}
+              onOpenChange={setEditOpen}
+              onDelete={() => setDeleteOpen(true)}
+            >
               <DialogTrigger asChild>
                 <Button variant="outline">Edit</Button>
               </DialogTrigger>
-              <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-2xl">
+              <DialogContent className="sm:max-w-2xl">
                 <DialogHeader>
                   <DialogTitle>Edit event</DialogTitle>
                   <DialogDescription>
@@ -160,7 +175,9 @@ export default function EventDetailPage({
             {event.status !== "cancelled" && (
               <Button
                 variant="outline"
-                onClick={() => void cancelEvent({ householdId, eventId: event._id })}
+                onClick={() =>
+                  void cancelEvent({ householdId, eventId: event._id })
+                }
               >
                 Cancel
               </Button>
@@ -187,17 +204,32 @@ export default function EventDetailPage({
               icon={CalendarDays}
             />
             {event.location && (
-              <DetailItem label="Location" value={event.location} icon={MapPin} />
+              <DetailItem
+                label="Location"
+                value={event.location}
+                icon={MapPin}
+              />
             )}
-            <DetailItem label="Created" value={formatDateTime(event.createdAt)} />
-            <DetailItem label="Updated" value={formatDateTime(event.updatedAt)} />
+            <DetailItem
+              label="Created"
+              value={formatDateTime(event.createdAt)}
+            />
+            <DetailItem
+              label="Updated"
+              value={formatDateTime(event.updatedAt)}
+            />
             {event.note && (
               <DetailItem label="Note" value={event.note} icon={StickyNote} />
             )}
           </div>
           <div className="mt-6 grid gap-2">
             <label className="text-sm font-medium">Status</label>
-            <Select value={event.status} onValueChange={(value) => void handleStatusChange(value as Doc<"events">["status"])}>
+            <Select
+              value={event.status}
+              onValueChange={(value) =>
+                void handleStatusChange(value as Doc<"events">["status"])
+              }
+            >
               <SelectTrigger className="max-w-xs">
                 <SelectValue />
               </SelectTrigger>
@@ -242,7 +274,9 @@ function DetailItem({
 }) {
   return (
     <div className="rounded-xl border p-4 transition-colors hover:border-foreground/15">
-      <p className="text-xs font-medium uppercase text-muted-foreground">{label}</p>
+      <p className="text-xs font-medium uppercase text-muted-foreground">
+        {label}
+      </p>
       <p className="mt-2 flex items-center gap-2 text-sm">
         {Icon && <Icon className="size-4 text-muted-foreground" />}
         {value}

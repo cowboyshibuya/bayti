@@ -3,12 +3,14 @@
 import { useMutation, useQuery } from "convex/react";
 import { Grid3X3, List, Plus } from "lucide-react";
 import { useState } from "react";
-import { AnimatePresence } from "framer-motion";
 
 import { Doc, Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
 import { LoadingState } from "@/components/shared/loading-state";
-import { EventForm, type EventFormSubmitValues } from "@/components/events/event-form";
+import {
+  EventForm,
+  type EventFormSubmitValues,
+} from "@/components/events/event-form";
 import { EventList } from "@/components/events/event-list";
 import { EventGrid } from "@/components/events/event-grid";
 import { Button } from "@/components/ui/button";
@@ -72,9 +74,7 @@ export default function EventsPage() {
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-sm text-muted-foreground">
-            {household?.name}
-          </p>
+          <p className="text-sm text-muted-foreground">{household?.name}</p>
           <h1 className="text-2xl font-semibold">Events</h1>
         </div>
         <div className="flex items-center gap-2">
@@ -101,7 +101,7 @@ export default function EventsPage() {
                 Add event
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-2xl">
+            <DialogContent className="sm:max-w-2xl">
               <DialogHeader>
                 <DialogTitle>Add event</DialogTitle>
                 <DialogDescription>
@@ -126,18 +126,17 @@ export default function EventsPage() {
             </TabsTrigger>
           ))}
         </TabsList>
-        <AnimatePresence mode="wait">
-          {eventViews.map((view) => (
-            <TabsContent key={view.value} value={view.value}>
-              <EventViewPanel
-                view={view.value}
-                layout={layout}
-                householdId={currentHouseholdId}
-                onCancel={handleCancel}
-              />
-            </TabsContent>
-          ))}
-        </AnimatePresence>
+
+        {eventViews.map((view) => (
+          <TabsContent key={view.value} value={view.value}>
+            <EventViewPanel
+              view={view.value}
+              layout={layout}
+              householdId={currentHouseholdId}
+              onCancel={handleCancel}
+            />
+          </TabsContent>
+        ))}
       </Tabs>
     </div>
   );
@@ -172,6 +171,7 @@ function EventViewPanel({
   return (
     <Component
       events={events}
+      defaultDescending={view === "past"}
       emptyTitle={`No ${view} events`}
       emptyDescription="Add an event to start tracking household activities."
       onCancel={onCancel}

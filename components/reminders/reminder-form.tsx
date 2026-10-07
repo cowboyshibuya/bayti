@@ -1,5 +1,7 @@
 "use client";
 
+import { EntityForm, useSavedForm } from "@/components/shared/entity-form";
+
 import { FormEvent, useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
 
@@ -34,16 +36,19 @@ export function ReminderForm({
 }: {
   members: { membership: Doc<"householdMembers">; user: Doc<"users"> | null }[];
   initialReminder?: Pick<
-      Doc<"reminders">,
-      "title" | "note" | "remindAt" | "targetUserId"
-    >;
+    Doc<"reminders">,
+    "title" | "note" | "remindAt" | "targetUserId"
+  >;
   submitLabel: string;
   onSubmit: (values: ReminderFormSubmitValues) => Promise<void>;
 }) {
+  const saved = useSavedForm();
   const [title, setTitle] = useState(initialReminder?.title ?? "");
   const [note, setNote] = useState(initialReminder?.note ?? "");
   const [remindAt, setRemindAt] = useState(() =>
-    formatDateTimeInputValue(initialReminder?.remindAt ?? Date.now() + 60 * 60 * 1000),
+    formatDateTimeInputValue(
+      initialReminder?.remindAt ?? Date.now() + 60 * 60 * 1000,
+    ),
   );
   const [targetUserId, setTargetUserId] = useState<string>(
     initialReminder?.targetUserId ?? "household",
@@ -53,14 +58,16 @@ export function ReminderForm({
 
   const memberOptions = useMemo(
     () =>
-      members.filter((member): member is typeof member & { user: Doc<"users"> } =>
-        Boolean(member.user),
+      members.filter(
+        (member): member is typeof member & { user: Doc<"users"> } =>
+          Boolean(member.user),
       ),
     [members],
   );
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (pending) return;
     setPending(true);
     setError(null);
 
@@ -85,17 +92,22 @@ export function ReminderForm({
         note: note.trim() || undefined,
         remindAt: timestamp,
         targetUserId:
-          targetUserId === "household" ? undefined : (targetUserId as Id<"users">),
+          targetUserId === "household"
+            ? undefined
+            : (targetUserId as Id<"users">),
       });
+      saved();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not save reminder.");
+      setError(
+        caught instanceof Error ? caught.message : "Could not save reminder.",
+      );
     } finally {
       setPending(false);
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="grid gap-4">
+    <EntityForm onSubmit={handleSubmit} pending={pending} error={error}>
       <div className="grid gap-2">
         <Label htmlFor="reminder-title">Title</Label>
         <Input
@@ -122,15 +134,16 @@ export function ReminderForm({
         <div className="grid gap-2">
           <Label htmlFor="reminder-at">Remind at</Label>
           <DateTimePicker
+            id="reminder-at"
             value={remindAt}
             onChange={setRemindAt}
             required
           />
         </div>
         <div className="grid gap-2">
-          <Label>For</Label>
+          <Label htmlFor="reminder-for">For</Label>
           <Select value={targetUserId} onValueChange={setTargetUserId}>
-            <SelectTrigger>
+            <SelectTrigger id="reminder-for">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -150,7 +163,10 @@ export function ReminderForm({
       </div>
 
       {error && (
-        <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+        <p
+          role="alert"
+          className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+        >
           {error}
         </p>
       )}
@@ -159,6 +175,6 @@ export function ReminderForm({
         {pending && <Loader2 className="size-4 animate-spin" />}
         {submitLabel}
       </Button>
-    </form>
+    </EntityForm>
   );
 }

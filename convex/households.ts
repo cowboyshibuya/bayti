@@ -1,3 +1,4 @@
+import { normalizeCurrency } from "./lib/currency";
 import { v } from "convex/values";
 
 import type { Id, TableNames } from "./_generated/dataModel";
@@ -46,9 +47,10 @@ function createInviteCode() {
   let code = "";
 
   for (let index = 0; index < INVITE_CODE_LENGTH; index += 1) {
-    code += INVITE_CODE_ALPHABET[
-      Math.floor(Math.random() * INVITE_CODE_ALPHABET.length)
-    ];
+    code +=
+      INVITE_CODE_ALPHABET[
+        Math.floor(Math.random() * INVITE_CODE_ALPHABET.length)
+      ];
   }
 
   return code;
@@ -216,7 +218,9 @@ async function deleteHouseholdAppData(
       while (true) {
         const items = await ctx.db
           .query("shoppingItems")
-          .withIndex("by_shopping_list", (q) => q.eq("shoppingListId", list._id))
+          .withIndex("by_shopping_list", (q) =>
+            q.eq("shoppingListId", list._id),
+          )
           .take(DELETE_BATCH_SIZE);
 
         if (items.length === 0) {
@@ -524,6 +528,20 @@ export const joinHousehold = mutation({
   },
 });
 
+export const updateCurrency = mutation({
+  args: { householdId: v.id("households"), currency: v.string() },
+  handler: async (ctx, args) => {
+    await requireHouseholdRole(ctx, args.householdId, ADMIN_ROLES);
+    const household = await ctx.db.get(args.householdId);
+    if (!household) throw new Error("Household not found.");
+    await ctx.db.patch(household._id, {
+      currency: normalizeCurrency(args.currency),
+      updatedAt: Date.now(),
+    });
+    return household._id;
+  },
+});
+
 export const updateHouseholdName = mutation({
   args: {
     householdId: v.id("households"),
@@ -645,9 +663,7 @@ export const deleteHousehold = mutation({
     while (true) {
       const memberships = await ctx.db
         .query("householdMembers")
-        .withIndex("by_household", (q) =>
-          q.eq("householdId", args.householdId),
-        )
+        .withIndex("by_household", (q) => q.eq("householdId", args.householdId))
         .take(DELETE_BATCH_SIZE);
 
       if (memberships.length === 0) {
